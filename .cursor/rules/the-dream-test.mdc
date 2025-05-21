@@ -1,0 +1,142 @@
+---
+description: 
+globs: 
+alwaysApply: true
+---
+# The Dream Blog Project System Prompt
+
+## Project Overview
+A blog/board application with authentication and CRUD operations, built with Flutter for web, Android, and iOS platforms.
+
+## Technical Stack
+- **Framework**: Flutter
+- **State Management**: GetX (with option to switch to Riverpod if needed)
+- **Architecture**: Clean Architecture with feature-based organization
+- **Network**: Dio for API calls with interceptors
+- **Storage**: SecureStorage for token management
+- **Environment**: Envied for environment variables
+- **Testing**: Unit, Widget, and Integration tests
+
+## Core Features
+1. **Authentication**
+   - User registration
+   - Login
+   - Token management (access & refresh tokens)
+   - Auto token refresh mechanism
+   - Session persistence
+
+2. **Post Management**
+   - Create, Read, Update, Delete posts
+   - Pagination support
+   - Category filtering (공지, 자유, QnA, 기타)
+   - Search functionality
+   - Sorting options
+   - Image upload support
+   - Pull-to-refresh
+
+3. **UI/UX**
+   - Responsive design for web and mobile
+   - Mobile: Drawer menu navigation
+   - Web: Adaptive layout for different screen sizes
+   - Light/Dark theme support
+   - Loading indicators
+   - Material Design with custom typography
+
+## Project Structure
+```
+lib/
+├── core/
+│ ├── constants/
+│ ├── errors/
+│ ├── network/
+│ ├── theme/
+│ └── utils/
+├── features/
+│ ├── auth/
+│ │ ├── data/
+│ │ ├── domain/
+│ │ └── presentation/
+│ ├── posts/
+│ │ ├── data/
+│ │ ├── domain/
+│ │ └── presentation/
+│ └── common/
+├── shared/
+│ ├── widgets/
+│ └── models/
+└── main.dart
+```
+
+## Implementation Guidelines
+
+### Authentication
+- Implement token storage using SecureStorage
+- Create Dio interceptors for:
+  - Token injection
+  - Token refresh
+  - Error handling
+- Maintain user session across app restarts
+
+### Post Management
+- Implement pagination with configurable page size
+- Support image uploads using multipart form data
+- Implement search and filtering functionality
+- Use GetX for state management
+- Implement pull-to-refresh
+
+### UI Implementation
+- Create responsive layouts for different screen sizes
+- Implement drawer menu for mobile
+- Support both light and dark themes
+- Use Material Design with custom typography
+- Implement loading indicators
+
+### Error Handling
+- Implement retry mechanism for token-related issues
+- Show appropriate error messages
+- Handle network errors gracefully
+
+### Testing
+- Write unit tests for business logic
+- Implement widget tests for UI components
+- Create integration tests for API calls
+
+### Documentation
+- Document all API integrations
+- Create comprehensive README
+- Add code documentation
+- Include setup instructions
+
+## API Integration
+- Implement all endpoints from the provided Postman documentation
+- Handle multipart form data for image uploads
+- Implement proper error handling for API responses
+
+## Security Considerations
+- Secure token storage
+- Environment variable management
+- API key protection
+- Input validation
+
+## Performance Considerations
+- Implement efficient image loading
+- Optimize list rendering
+- Handle pagination efficiently
+- Implement proper caching strategies
+
+## Development Workflow
+1. Set up project structure
+2. Implement authentication
+3. Create post management features
+4. Implement UI components
+5. Add testing
+6. Document code
+7. Optimize performance
+8. Final testing and deployment
+
+## Dependencies
+- get: ^4.7.2
+- dio: ^5.8.0+1
+- flutter_secure_storage: ^9.2.4
+
+- envied: ^1.1.1
