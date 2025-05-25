@@ -1,96 +1,192 @@
 import 'package:flutter/material.dart';
-import 'package:get/get.dart';
-import '../controllers/auth_controller.dart';
+import 'package:thedreamsolution/features/auth/api/auth_api.dart';
 
 class LoginScreen extends StatelessWidget {
   LoginScreen({super.key});
 
   final _formKey = GlobalKey<FormState>();
-  final _emailController = TextEditingController();
+  final _usernameController = TextEditingController();
   final _passwordController = TextEditingController();
+  final _authApi = AuthApi();
 
   @override
   Widget build(BuildContext context) {
-    final authController = Get.find<AuthController>();
-
     return Scaffold(
-      appBar: AppBar(title: const Text('Login')),
-      body: Padding(
-        padding: const EdgeInsets.all(16.0),
-        child: Form(
-          key: _formKey,
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              TextFormField(
-                controller: _emailController,
-                decoration: const InputDecoration(
-                  labelText: 'Email',
-                  border: OutlineInputBorder(),
+      backgroundColor: const Color(0xFFF7F9FB),
+      body: Center(
+        child: SingleChildScrollView(
+          child: Container(
+            width: 900,
+            padding: const EdgeInsets.symmetric(vertical: 48, horizontal: 32),
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(16),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black12,
+                  blurRadius: 16,
+                  offset: Offset(0, 4),
                 ),
-                keyboardType: TextInputType.emailAddress,
-                validator: (value) {
-                  if (value == null || value.isEmpty) {
-                    return 'Please enter your email';
-                  }
-                  if (!GetUtils.isEmail(value)) {
-                    return 'Please enter a valid email';
-                  }
-                  return null;
-                },
-              ),
-              const SizedBox(height: 16),
-              TextFormField(
-                controller: _passwordController,
-                decoration: const InputDecoration(
-                  labelText: 'Password',
-                  border: OutlineInputBorder(),
+              ],
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Center(
+                  child: Text(
+                    '더드림솔루션',
+                    style: TextStyle(
+                      fontSize: 32,
+                      fontWeight: FontWeight.bold,
+                      color: Colors.black87,
+                    ),
+                  ),
                 ),
-                obscureText: true,
-                validator: (value) {
-                  if (value == null || value.isEmpty) {
-                    return 'Please enter your password';
-                  }
-                  if (value.length < 6) {
-                    return 'Password must be at least 6 characters';
-                  }
-                  return null;
-                },
-              ),
-              const SizedBox(height: 24),
-              Obx(() {
-                if (authController.isLoading) {
-                  return const CircularProgressIndicator();
-                }
-                return Column(
+                const SizedBox(height: 40),
+                Row(
                   children: [
-                    if (authController.error != null)
-                      Padding(
-                        padding: const EdgeInsets.only(bottom: 16),
-                        child: Text(
-                          authController.error!,
-                          style: const TextStyle(color: Colors.red),
+                    Expanded(
+                      child: Form(
+                        key: _formKey,
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              '이메일',
+                              style: TextStyle(fontWeight: FontWeight.w500),
+                            ),
+                            const SizedBox(height: 8),
+                            TextFormField(
+                              controller: _usernameController,
+                              decoration: InputDecoration(
+                                hintText: '이메일을 입력해주세요',
+                                filled: true,
+                                fillColor: Color(0xFFF1F5F9),
+                                border: OutlineInputBorder(
+                                  borderRadius: BorderRadius.circular(8),
+                                  borderSide: BorderSide.none,
+                                ),
+                              ),
+                              validator:
+                                  (value) =>
+                                      value == null || value.isEmpty
+                                          ? '이메일을 입력해주세요'
+                                          : null,
+                            ),
+                            const SizedBox(height: 24),
+                            Text(
+                              '비밀번호',
+                              style: TextStyle(fontWeight: FontWeight.w500),
+                            ),
+                            const SizedBox(height: 8),
+                            TextFormField(
+                              controller: _passwordController,
+                              decoration: InputDecoration(
+                                hintText: '비밀번호를 입력해주세요',
+                                filled: true,
+                                fillColor: Color(0xFFF1F5F9),
+                                border: OutlineInputBorder(
+                                  borderRadius: BorderRadius.circular(8),
+                                  borderSide: BorderSide.none,
+                                ),
+                              ),
+                              obscureText: true,
+                              validator:
+                                  (value) =>
+                                      value == null || value.isEmpty
+                                          ? '비밀번호를 입력해주세요'
+                                          : null,
+                            ),
+                            const SizedBox(height: 24),
+                            Row(
+                              children: [
+                                Spacer(),
+                                TextButton(
+                                  onPressed: () {},
+                                  child: const Text(
+                                    '계정이 없으신가요?',
+                                    style: TextStyle(color: Colors.blue),
+                                  ),
+                                ),
+                              ],
+                            ),
+                            const SizedBox(height: 24),
+                            SizedBox(
+                              width: double.infinity,
+                              child: ElevatedButton(
+                                onPressed: () async {
+                                  if (_formKey.currentState!.validate()) {
+                                    try {
+                                      final response = await _authApi.login(
+                                        username: _usernameController.text,
+                                        password: _passwordController.text,
+                                      );
+
+                                      if (response.statusCode == 200) {
+                                        ScaffoldMessenger.of(
+                                          context,
+                                        ).showSnackBar(
+                                          const SnackBar(
+                                            content: Text('로그인 성공.'),
+                                            backgroundColor: Colors.green,
+                                          ),
+                                        );
+                                      } else {
+                                        // Show error message
+                                        ScaffoldMessenger.of(
+                                          context,
+                                        ).showSnackBar(
+                                          const SnackBar(
+                                            content: Text('로그인에 실패했습니다.'),
+                                            backgroundColor: Colors.red,
+                                          ),
+                                        );
+                                      }
+                                    } catch (e) {
+                                      ScaffoldMessenger.of(
+                                        context,
+                                      ).showSnackBar(
+                                        SnackBar(
+                                          content: Text(
+                                            'fuck sex. ${e.toString()}',
+                                          ),
+                                          backgroundColor: Colors.red,
+                                        ),
+                                      );
+                                    }
+                                  }
+                                },
+                                style: ElevatedButton.styleFrom(
+                                  padding: const EdgeInsets.symmetric(
+                                    vertical: 16,
+                                  ),
+                                  backgroundColor: Colors.blue,
+                                  foregroundColor: Colors.white,
+                                  shape: RoundedRectangleBorder(
+                                    borderRadius: BorderRadius.circular(8),
+                                  ),
+                                ),
+                                child: const Text(
+                                  '로그인',
+                                  style: TextStyle(fontSize: 16),
+                                ),
+                              ),
+                            ),
+                          ],
                         ),
                       ),
-                    ElevatedButton(
-                      onPressed: () {
-                        if (_formKey.currentState!.validate()) {
-                          authController.login(
-                            _emailController.text,
-                            _passwordController.text,
-                          );
-                        }
-                      },
-                      child: const Text('Login'),
                     ),
-                    TextButton(
-                      onPressed: () => Get.toNamed('/register'),
-                      child: const Text('Don\'t have an account? Register'),
+                    const SizedBox(width: 48),
+                    Expanded(
+                      child: Image.asset(
+                        'assets/images/logo.png',
+                        fit: BoxFit.contain,
+                      ),
                     ),
                   ],
-                );
-              }),
-            ],
+                ),
+              ],
+            ),
           ),
         ),
       ),

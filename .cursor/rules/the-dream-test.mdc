@@ -42,30 +42,7 @@ A blog/board application with authentication and CRUD operations, built with Flu
    - Loading indicators
    - Material Design with custom typography
 
-## Project Structure
-```
-lib/
-├── core/
-│ ├── constants/
-│ ├── errors/
-│ ├── network/
-│ ├── theme/
-│ └── utils/
-├── features/
-│ ├── auth/
-│ │ ├── data/
-│ │ ├── domain/
-│ │ └── presentation/
-│ ├── posts/
-│ │ ├── data/
-│ │ ├── domain/
-│ │ └── presentation/
-│ └── common/
-├── shared/
-│ ├── widgets/
-│ └── models/
-└── main.dart
-```
+
 
 ## Implementation Guidelines
 
