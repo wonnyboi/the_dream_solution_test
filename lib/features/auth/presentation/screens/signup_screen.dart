@@ -2,24 +2,25 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../providers/auth_provider.dart';
 import '../../util/auth_ui_helper.dart';
-import 'signup_screen.dart';
 import 'package:the_dream_solution/features/auth/util/auth_validator.dart';
-import 'package:the_dream_solution/features/main/presentation/screens/main_screen.dart';
 import 'package:go_router/go_router.dart';
 
-class LoginScreen extends ConsumerStatefulWidget {
-  const LoginScreen({super.key});
+class SignupScreen extends ConsumerStatefulWidget {
+  const SignupScreen({super.key});
 
   @override
-  ConsumerState<LoginScreen> createState() => _LoginScreenState();
+  ConsumerState<SignupScreen> createState() => _SignupScreenState();
 }
 
-class _LoginScreenState extends ConsumerState<LoginScreen> {
+class _SignupScreenState extends ConsumerState<SignupScreen> {
   final TextEditingController _emailController = TextEditingController();
   final TextEditingController _passwordController = TextEditingController();
+  final TextEditingController _confirmPasswordController =
+      TextEditingController();
 
   String? _emailError;
   String? _passwordError;
+  String? _confirmPasswordError;
   String? _submitError;
   bool _isLoading = false;
 
@@ -27,6 +28,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
   void dispose() {
     _emailController.dispose();
     _passwordController.dispose();
+    _confirmPasswordController.dispose();
     super.dispose();
   }
 
@@ -42,36 +44,53 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
     });
   }
 
+  void _validateConfirmPassword(String value) {
+    setState(() {
+      _confirmPasswordError = AuthValidator.validateConfirmPassword(
+        value.trim(),
+        _passwordController.text.trim(),
+      );
+    });
+  }
+
   Future<void> _submit() async {
     final email = _emailController.text.trim();
     final password = _passwordController.text.trim();
+    final confirmPassword = _confirmPasswordController.text.trim();
     setState(() {
       _emailError = AuthValidator.validateEmail(email);
       _passwordError = AuthValidator.validatePassword(password);
+      _confirmPasswordError = AuthValidator.validateConfirmPassword(
+        confirmPassword,
+        password,
+      );
       _submitError = null;
     });
-    if (_emailError != null || _passwordError != null) return;
+    if (_emailError != null ||
+        _passwordError != null ||
+        _confirmPasswordError != null)
+      return;
     setState(() {
       _isLoading = true;
     });
     final controller = ref.read(authProvider.notifier);
-    final success = await controller.loginWithCredentials(email, password);
+    final success = await controller.signupWithCredentials(
+      email,
+      password,
+      confirmPassword,
+    );
     setState(() {
       _isLoading = false;
     });
     if (success) {
       if (context.mounted) {
-        context.go('/main');
+        context.go('/login');
       }
     } else {
       setState(() {
         _submitError = ref.read(authProvider).errorMessage;
       });
     }
-  }
-
-  void _navigateToSignup() {
-    context.go('/signup');
   }
 
   @override
@@ -156,13 +175,34 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                         obscureText: true,
                       ),
                       const SizedBox(height: 24),
+                      const Text(
+                        '비밀번호 확인',
+                        style: TextStyle(fontWeight: FontWeight.w500),
+                      ),
+                      const SizedBox(height: 8),
+                      TextFormField(
+                        controller: _confirmPasswordController,
+                        onChanged: _validateConfirmPassword,
+                        decoration: InputDecoration(
+                          hintText: '비밀번호를 다시 입력해주세요',
+                          filled: true,
+                          fillColor: const Color(0xFFF1F5F9),
+                          border: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(8),
+                            borderSide: BorderSide.none,
+                          ),
+                          errorText: _confirmPasswordError,
+                        ),
+                        obscureText: true,
+                      ),
+                      const SizedBox(height: 24),
                       Row(
                         children: [
                           const Spacer(),
                           TextButton(
-                            onPressed: _navigateToSignup,
+                            onPressed: () => context.go('/login'),
                             child: const Text(
-                              '계정이 없으신가요?',
+                              '이미 계정이 있으신가요?',
                               style: TextStyle(color: Colors.blue),
                             ),
                           ),
@@ -197,7 +237,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                                     color: Colors.white,
                                   )
                                   : const Text(
-                                    '로그인',
+                                    '회원가입',
                                     style: TextStyle(fontSize: 16),
                                   ),
                         ),

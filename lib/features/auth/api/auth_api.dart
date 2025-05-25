@@ -1,12 +1,17 @@
 import 'package:http/http.dart' as http;
-import 'package:thedreamsolution/core/network/api_client.dart';
+import 'package:the_dream_solution/core/network/api_client.dart';
+import 'package:the_dream_solution/core/storage/secure_storage.dart';
+import 'dart:convert';
 
 class AuthApi {
   final ApiClient _apiClient;
+  final SecureStorage _secureStorage;
 
-  AuthApi({ApiClient? apiClient}) : _apiClient = apiClient ?? ApiClient();
+  AuthApi({ApiClient? apiClient, SecureStorage? secureStorage})
+    : _apiClient = apiClient ?? ApiClient(),
+      _secureStorage = secureStorage ?? SecureStorage();
 
-  Future<http.Response> login({
+  Future<bool> login({
     required String username,
     required String password,
   }) async {
@@ -15,7 +20,22 @@ class AuthApi {
         '/auth/signin',
         body: {'username': username, 'password': password},
       );
-      return response;
+
+      if (response.statusCode == 200) {
+        return await _secureStorage.handleLoginResponse(
+          response.body,
+          response.statusCode,
+          username,
+        );
+      } else {
+        try {
+          final Map<String, dynamic> errorJson = json.decode(response.body);
+          final String message = errorJson['message'] ?? '알 수 없는 오류가 발생했습니다.';
+          throw message;
+        } catch (_) {
+          throw '알 수 없는 오류가 발생했습니다.';
+        }
+      }
     } catch (e) {
       rethrow;
     }
