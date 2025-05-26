@@ -1,3 +1,5 @@
+import 'dart:convert';
+
 class Board {
   final int id;
   final String title;
@@ -149,5 +151,45 @@ class BoardCategoryResponse {
 
   factory BoardCategoryResponse.fromJson(Map<String, dynamic> json) {
     return BoardCategoryResponse(categories: Map<String, String>.from(json));
+  }
+}
+
+class BoardRequest {
+  final String title;
+  final String content;
+  final String category;
+
+  const BoardRequest({
+    required this.title,
+    required this.content,
+    required this.category,
+  });
+
+  Map<String, dynamic> toJson() {
+    return {'title': title, 'content': content, 'category': category};
+  }
+
+  String toJsonString() {
+    return json.encode(toJson());
+  }
+
+  bool isValid() {
+    return title.isNotEmpty && content.isNotEmpty && category.isNotEmpty;
+  }
+
+  BoardRequest copyWith({String? title, String? content, String? category}) {
+    return BoardRequest(
+      title: title ?? this.title,
+      content: content ?? this.content,
+      category: category ?? this.category,
+    );
+  }
+
+  factory BoardRequest.fromBoardDetail(BoardDetailResponse board) {
+    return BoardRequest(
+      title: board.title,
+      content: board.content,
+      category: board.boardCategory,
+    );
   }
 }

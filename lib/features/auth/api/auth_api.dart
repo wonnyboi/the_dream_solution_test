@@ -4,22 +4,41 @@ import 'package:the_dream_solution/core/storage/secure_storage.dart';
 import 'dart:convert';
 
 class AuthApi {
-  final ApiClient _apiClient;
+  final ApiClient? _apiClient;
   final SecureStorage _secureStorage;
+  final http.Client _httpClient;
 
   AuthApi({ApiClient? apiClient, SecureStorage? secureStorage})
-    : _apiClient = apiClient ?? ApiClient(),
-      _secureStorage = secureStorage ?? SecureStorage();
+    : _apiClient = apiClient,
+      _secureStorage = secureStorage ?? SecureStorage(),
+      _httpClient = http.Client();
 
   Future<bool> login({
     required String username,
     required String password,
   }) async {
     try {
-      final response = await _apiClient.post(
-        '/auth/signin',
-        body: {'username': username, 'password': password},
-      );
+      final http.Response response;
+
+      if (_apiClient != null) {
+        // Use ApiClient when available (normal flow)
+        response = await _apiClient.post(
+          '/auth/signin',
+          body: {'username': username, 'password': password},
+        );
+      } else {
+        // Use direct HTTP call when called from interceptor (avoid circular dependency)
+        const String baseUrl = 'https://front-mission.bigs.or.kr';
+        final url = Uri.parse('$baseUrl/auth/signin');
+        response = await _httpClient.post(
+          url,
+          headers: {
+            'Content-Type': 'application/json',
+            'Accept': 'application/json',
+          },
+          body: json.encode({'username': username, 'password': password}),
+        );
+      }
 
       if (response.statusCode == 200) {
         await _secureStorage.handleUserInfoSave(username);
@@ -48,16 +67,37 @@ class AuthApi {
     required String confirmPassword,
   }) async {
     try {
-      final response = await _apiClient.post(
-        '/auth/signup',
-        body: {
-          'username': username,
-          'name': name,
-          'password': password,
-          'confirmPassword': confirmPassword,
-        },
-      );
-      return response;
+      if (_apiClient != null) {
+        // Use ApiClient when available (normal flow)
+        final response = await _apiClient.post(
+          '/auth/signup',
+          body: {
+            'username': username,
+            'name': name,
+            'password': password,
+            'confirmPassword': confirmPassword,
+          },
+        );
+        return response;
+      } else {
+        // Use direct HTTP call when called from interceptor
+        const String baseUrl = 'https://front-mission.bigs.or.kr';
+        final url = Uri.parse('$baseUrl/auth/signup');
+        final response = await _httpClient.post(
+          url,
+          headers: {
+            'Content-Type': 'application/json',
+            'Accept': 'application/json',
+          },
+          body: json.encode({
+            'username': username,
+            'name': name,
+            'password': password,
+            'confirmPassword': confirmPassword,
+          }),
+        );
+        return response;
+      }
     } catch (e) {
       rethrow;
     }
@@ -65,10 +105,28 @@ class AuthApi {
 
   Future<bool> refreshToken(String refreshToken) async {
     try {
-      final response = await _apiClient.post(
-        '/auth/refresh',
-        body: {'refreshToken': refreshToken},
-      );
+      final http.Response response;
+
+      if (_apiClient != null) {
+        // Use ApiClient when available (normal flow)
+        response = await _apiClient.post(
+          '/auth/refresh',
+          body: {'refreshToken': refreshToken},
+        );
+      } else {
+        // Use direct HTTP call when called from interceptor
+        const String baseUrl = 'https://front-mission.bigs.or.kr';
+        final url = Uri.parse('$baseUrl/auth/refresh');
+        response = await _httpClient.post(
+          url,
+          headers: {
+            'Content-Type': 'application/json',
+            'Accept': 'application/json',
+          },
+          body: json.encode({'refreshToken': refreshToken}),
+        );
+      }
+
       if (response.statusCode == 200) {
         return await _secureStorage.handleTokenResponse(
           response.body,
@@ -83,6 +141,7 @@ class AuthApi {
   }
 
   void dispose() {
-    _apiClient.dispose();
+    _apiClient?.dispose();
+    _httpClient.close();
   }
 }

@@ -3,23 +3,30 @@ import 'dart:convert';
 import 'package:flutter/foundation.dart';
 
 import 'package:the_dream_solution/core/config/env.dart';
+import 'package:the_dream_solution/core/storage/secure_storage.dart';
 import 'request_executor.dart';
+import 'auth_interceptor.dart';
 
 class ApiClient {
   static const String baseUrl = Env.dreamServer;
   final http.Client _client;
+  final AuthInterceptor _authInterceptor;
 
-  ApiClient({http.Client? client}) : _client = client ?? http.Client();
+  ApiClient({http.Client? client, SecureStorage? secureStorage})
+    : _client = client ?? http.Client(),
+      _authInterceptor = AuthInterceptor(secureStorage ?? SecureStorage());
 
   Future<http.Response> get(String endpoint) async {
     debugPrint('🚀 GET Request to: $baseUrl$endpoint');
+    final url = '$baseUrl$endpoint';
 
     return RequestExecutor.executeRequest(() async {
+      final headers = await _authInterceptor.getAuthenticatedHeaders(url, {
+        'Content-Type': 'application/json',
+      });
+
       return await _client
-          .get(
-            Uri.parse('$baseUrl$endpoint'),
-            headers: {'Content-Type': 'application/json'},
-          )
+          .get(Uri.parse(url), headers: headers)
           .timeout(RequestExecutor.timeoutDuration);
     }, 'GET');
   }
@@ -32,15 +39,18 @@ class ApiClient {
     if (body != null) {
       debugPrint('📦 POST Body: ${jsonEncode(body)}');
     }
+    final url = '$baseUrl$endpoint';
 
     return RequestExecutor.executeRequest(() async {
+      final headers = await _authInterceptor.getAuthenticatedHeaders(url, {
+        'Content-Type': 'application/json',
+        'Accept': 'application/json',
+      });
+
       final response = await _client
           .post(
-            Uri.parse('$baseUrl$endpoint'),
-            headers: {
-              'Content-Type': 'application/json',
-              'Accept': 'application/json',
-            },
+            Uri.parse(url),
+            headers: headers,
             body: body != null ? jsonEncode(body) : null,
           )
           .timeout(RequestExecutor.timeoutDuration);
@@ -48,6 +58,37 @@ class ApiClient {
       debugPrint('📨 POST Response: ${response.statusCode} - ${response.body}');
       return response;
     }, 'POST');
+  }
+
+  Future<http.Response> patch(
+    String endpoint, {
+    Map<String, dynamic>? body,
+  }) async {
+    debugPrint('🚀 PATCH Request to: $baseUrl$endpoint');
+    if (body != null) {
+      debugPrint('📦 PATCH Body: ${jsonEncode(body)}');
+    }
+    final url = '$baseUrl$endpoint';
+
+    return RequestExecutor.executeRequest(() async {
+      final headers = await _authInterceptor.getAuthenticatedHeaders(url, {
+        'Content-Type': 'application/json',
+        'Accept': 'application/json',
+      });
+
+      final response = await _client
+          .patch(
+            Uri.parse(url),
+            headers: headers,
+            body: body != null ? jsonEncode(body) : null,
+          )
+          .timeout(RequestExecutor.timeoutDuration);
+
+      debugPrint(
+        '📨 PATCH Response: ${response.statusCode} - ${response.body}',
+      );
+      return response;
+    }, 'PATCH');
   }
 
   Future<http.Response> patchMultipart(
@@ -60,6 +101,7 @@ class ApiClient {
       '$baseUrl$endpoint',
       fields: fields,
       files: files,
+      authInterceptor: _authInterceptor,
     );
   }
 
@@ -73,6 +115,7 @@ class ApiClient {
       '$baseUrl$endpoint',
       fields: fields,
       files: files,
+      authInterceptor: _authInterceptor,
     );
   }
 
@@ -84,15 +127,18 @@ class ApiClient {
     if (body != null) {
       debugPrint('📦 DELETE Body: ${jsonEncode(body)}');
     }
+    final url = '$baseUrl$endpoint';
 
     return RequestExecutor.executeRequest(() async {
+      final headers = await _authInterceptor.getAuthenticatedHeaders(url, {
+        'Content-Type': 'application/json',
+        'Accept': 'application/json',
+      });
+
       return await _client
           .delete(
-            Uri.parse('$baseUrl$endpoint'),
-            headers: {
-              'Content-Type': 'application/json',
-              'Accept': 'application/json',
-            },
+            Uri.parse(url),
+            headers: headers,
             body: body != null ? jsonEncode(body) : null,
           )
           .timeout(RequestExecutor.timeoutDuration);

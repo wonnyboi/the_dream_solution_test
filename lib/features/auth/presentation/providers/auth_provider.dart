@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:the_dream_solution/features/auth/api/auth_api.dart';
 import 'package:the_dream_solution/features/auth/util/auth_validator.dart';
 import 'package:the_dream_solution/core/storage/secure_storage.dart';
+import 'package:the_dream_solution/core/network/api_client.dart';
 
 final authProvider = StateNotifierProvider<AuthNotifier, AuthState>((ref) {
   return AuthNotifier(
@@ -11,7 +12,12 @@ final authProvider = StateNotifierProvider<AuthNotifier, AuthState>((ref) {
   );
 });
 
-final authApiProvider = Provider<AuthApi>((ref) => AuthApi());
+final authApiProvider = Provider<AuthApi>(
+  (ref) => AuthApi(
+    apiClient: ApiClient(),
+    secureStorage: ref.read(secureStorageProvider),
+  ),
+);
 final secureStorageProvider = Provider<SecureStorage>((ref) => SecureStorage());
 
 class AuthState {

@@ -1,16 +1,12 @@
+import 'dart:typed_data';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:the_dream_solution/features/board/api/board_api.dart';
-import 'package:the_dream_solution/features/board/repositories/board_repository.dart';
 import 'package:the_dream_solution/features/board/model/board_model.dart';
 
 final boardApiProvider = Provider<BoardApi>((ref) => BoardApi());
 
-final boardRepositoryProvider = Provider<BoardRepository>((ref) {
-  return BoardRepository(ref.read(boardApiProvider));
-});
-
 final boardProvider = StateNotifierProvider<BoardNotifier, BoardState>((ref) {
-  return BoardNotifier(ref.read(boardRepositoryProvider));
+  return BoardNotifier(ref.read(boardApiProvider));
 });
 
 class BoardState {
@@ -78,9 +74,9 @@ class BoardState {
 }
 
 class BoardNotifier extends StateNotifier<BoardState> {
-  final BoardRepository _boardRepository;
+  final BoardApi _boardApi;
 
-  BoardNotifier(this._boardRepository) : super(const BoardState());
+  BoardNotifier(this._boardApi) : super(const BoardState());
 
   // 보드 목록 페이지네이션
   Future<void> loadBoards({
@@ -103,10 +99,7 @@ class BoardNotifier extends StateNotifier<BoardState> {
     }
 
     try {
-      final response = await _boardRepository.getBoardsList(
-        page: currentPage,
-        size: pageSize,
-      );
+      final response = await _boardApi.getBoardsList(currentPage, pageSize);
 
       final newBoards =
           isRefresh || currentPage == 0
@@ -137,7 +130,7 @@ class BoardNotifier extends StateNotifier<BoardState> {
     state = state.copyWith(isLoadingDetail: true, errorMessage: null);
 
     try {
-      final response = await _boardRepository.getBoardDetail(id);
+      final response = await _boardApi.getBoardDetail(id);
       state = state.copyWith(selectedBoard: response, isLoadingDetail: false);
     } catch (e) {
       state = state.copyWith(
@@ -150,7 +143,7 @@ class BoardNotifier extends StateNotifier<BoardState> {
   // 카테고리
   Future<void> loadCategories() async {
     try {
-      final categories = await _boardRepository.getBoardCategories();
+      final categories = await _boardApi.getBoardCategories();
       state = state.copyWith(categories: categories);
     } catch (e) {
       state = state.copyWith(errorMessage: e.toString());
@@ -159,24 +152,17 @@ class BoardNotifier extends StateNotifier<BoardState> {
 
   // 보드 생성
   Future<bool> createBoard({
-    required String title,
-    required String content,
-    required String category,
+    required BoardRequest request,
     String? imagePath,
   }) async {
     state = state.copyWith(isCreating: true, errorMessage: null);
 
     try {
-      await _boardRepository.createBoard(
-        title: title,
-        content: content,
-        category: category,
-        imagePath: imagePath,
-      );
+      await _boardApi.createBoard(request: request, imagePath: imagePath);
 
       state = state.copyWith(isCreating: false);
 
-      // Refresh boards list after creation
+      // 생성 후 보드 리스트 새로고침
       await loadBoards(isRefresh: true);
 
       return true;
@@ -189,19 +175,15 @@ class BoardNotifier extends StateNotifier<BoardState> {
   // 보드 수정
   Future<bool> updateBoard({
     required int id,
-    required String title,
-    required String content,
-    required String category,
+    required BoardRequest request,
     String? imagePath,
   }) async {
     state = state.copyWith(isUpdating: true, errorMessage: null);
 
     try {
-      await _boardRepository.updateBoard(
+      await _boardApi.updateBoard(
         id: id,
-        title: title,
-        content: content,
-        category: category,
+        request: request,
         imagePath: imagePath,
       );
 
@@ -223,7 +205,7 @@ class BoardNotifier extends StateNotifier<BoardState> {
     state = state.copyWith(isDeleting: true, errorMessage: null);
 
     try {
-      await _boardRepository.deleteBoard(id);
+      await _boardApi.deleteBoard(id);
 
       state = state.copyWith(isDeleting: false, selectedBoard: null);
 

@@ -5,6 +5,8 @@ import 'package:the_dream_solution/features/auth/presentation/providers/auth_pro
 import 'package:markdown_widget/markdown_widget.dart';
 import 'package:the_dream_solution/core/storage/secure_storage.dart';
 import 'package:go_router/go_router.dart';
+import 'package:the_dream_solution/features/board/providers/board_provider.dart';
+import 'package:the_dream_solution/features/main/presentation/widgets/drawer.dart';
 
 class MainScreen extends ConsumerStatefulWidget {
   const MainScreen({super.key});
@@ -17,6 +19,7 @@ class _MainScreenState extends ConsumerState<MainScreen> {
   String _content = '';
   bool _isLoading = true;
   String? _userName;
+  String? _userEmail;
   final _secureStorage = SecureStorage();
 
   @override
@@ -24,12 +27,22 @@ class _MainScreenState extends ConsumerState<MainScreen> {
     super.initState();
     _loadReadme();
     _loadUserInfo();
+    _loadBoardData();
   }
 
   Future<void> _loadUserInfo() async {
     final name = await _secureStorage.getName();
+    final email = await _secureStorage.getUsername();
+
     setState(() {
       _userName = name;
+      _userEmail = email;
+    });
+  }
+
+  Future<void> _loadBoardData() async {
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      ref.read(boardProvider.notifier).refresh();
     });
   }
 
@@ -50,27 +63,156 @@ class _MainScreenState extends ConsumerState<MainScreen> {
     }
   }
 
+  Widget _buildBoardListSection() {
+    final boardState = ref.watch(boardProvider);
+    final boardNotifier = ref.read(boardProvider.notifier);
+
+    return Container(
+      width: 900,
+      height: 600,
+      padding: const EdgeInsets.all(24.0),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(16),
+        boxShadow: const [
+          BoxShadow(
+            color: Colors.black12,
+            blurRadius: 16,
+            offset: Offset(0, 4),
+          ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              const Text(
+                '게시판 목록',
+                style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
+              ),
+              Row(
+                children: [
+                  IconButton(
+                    onPressed: () => boardNotifier.refresh(),
+                    icon: const Icon(Icons.refresh),
+                  ),
+                  IconButton(
+                    onPressed: () => context.go('/board/create'),
+                    icon: const Icon(Icons.add),
+                  ),
+                ],
+              ),
+            ],
+          ),
+          const SizedBox(height: 16),
+
+          if (boardState.errorMessage != null)
+            Container(
+              width: double.infinity,
+              padding: const EdgeInsets.all(12),
+              margin: const EdgeInsets.only(bottom: 16),
+              decoration: BoxDecoration(
+                color: Colors.red.shade100,
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child: Row(
+                children: [
+                  Icon(Icons.error, color: Colors.red.shade700),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: Text(
+                      boardState.errorMessage!,
+                      style: TextStyle(color: Colors.red.shade700),
+                    ),
+                  ),
+                  IconButton(
+                    onPressed: () => boardNotifier.clearError(),
+                    icon: const Icon(Icons.close),
+                  ),
+                ],
+              ),
+            ),
+
+          Expanded(
+            child:
+                boardState.isLoading && boardState.boards.isEmpty
+                    ? const Center(child: CircularProgressIndicator())
+                    : boardState.boards.isEmpty
+                    ? const Center(
+                      child: Text(
+                        '게시글이 없습니다.',
+                        style: TextStyle(fontSize: 16, color: Colors.grey),
+                      ),
+                    )
+                    : ListView.builder(
+                      itemCount: boardState.boards.length,
+                      itemBuilder: (context, index) {
+                        final board = boardState.boards[index];
+                        return Card(
+                          margin: const EdgeInsets.only(bottom: 8),
+                          child: ListTile(
+                            title: Text(
+                              board.title,
+                              style: const TextStyle(
+                                fontWeight: FontWeight.w500,
+                              ),
+                            ),
+                            subtitle: Text(
+                              '${boardState.categories[board.category] ?? board.category} • ${board.createdAt.toString().split(' ')[0]}',
+                              style: const TextStyle(
+                                color: Colors.grey,
+                                fontSize: 12,
+                              ),
+                            ),
+                            trailing: const Icon(
+                              Icons.arrow_forward_ios,
+                              size: 16,
+                            ),
+                            onTap:
+                                () => boardNotifier.loadBoardDetail(board.id),
+                          ),
+                        );
+                      },
+                    ),
+          ),
+
+          if (boardState.hasMoreData)
+            Padding(
+              padding: const EdgeInsets.only(top: 16),
+              child: Center(
+                child: ElevatedButton(
+                  onPressed:
+                      boardState.isLoading
+                          ? null
+                          : () => boardNotifier.loadMoreBoards(),
+                  child:
+                      boardState.isLoading
+                          ? const SizedBox(
+                            width: 16,
+                            height: 16,
+                            child: CircularProgressIndicator(strokeWidth: 2),
+                          )
+                          : const Text('더 보기'),
+                ),
+              ),
+            ),
+        ],
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: const Color(0xFFF7F9FB),
+      drawer: const DrawerWidget(),
       appBar: AppBar(
         backgroundColor: const Color(0xFFF7F9FB),
+
         title: const Text('더드림솔루션'),
         actions: [
-          if (_userName != null)
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 16.0),
-              child: Center(
-                child: Text(
-                  '안녕하세요! $_userName 님!',
-                  style: const TextStyle(
-                    fontSize: 16,
-                    fontWeight: FontWeight.w500,
-                  ),
-                ),
-              ),
-            ),
           IconButton(
             icon: const Icon(Icons.logout),
             onPressed: () async {
@@ -91,7 +233,7 @@ class _MainScreenState extends ConsumerState<MainScreen> {
                     children: [
                       Container(
                         width: 900,
-                        height: 900,
+                        height: 600,
                         padding: const EdgeInsets.all(24.0),
                         decoration: BoxDecoration(
                           color: Colors.white,
@@ -111,16 +253,8 @@ class _MainScreenState extends ConsumerState<MainScreen> {
                         ),
                       ),
                       const SizedBox(height: 24),
-                      Container(
-                        width: 900,
-                        height: 900,
-                        padding: const EdgeInsets.all(24.0),
-                        decoration: BoxDecoration(
-                          color: Colors.white,
-                          borderRadius: BorderRadius.circular(16),
-                        ),
-                        child: Row(children: [Text('안녕하세요! $_userName 님!')]),
-                      ),
+                      _buildBoardListSection(),
+                      const SizedBox(height: 24),
                     ],
                   ),
                 ),

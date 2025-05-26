@@ -3,6 +3,7 @@ import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'dart:convert';
 
 import 'package:the_dream_solution/features/auth/util/auth_validator.dart';
+import 'package:the_dream_solution/core/services/navigation_service.dart';
 
 class SecureStorage {
   final FlutterSecureStorage _storage = const FlutterSecureStorage();
@@ -51,6 +52,12 @@ class SecureStorage {
 
   Future<void> logout() async {
     await _storage.deleteAll();
+  }
+
+  Future<void> logoutAndNavigateToLogin() async {
+    debugPrint('🚪 Performing logout and navigating to login page');
+    await _storage.deleteAll();
+    NavigationService.clearAllAndNavigateToLogin();
   }
 
   Future<bool> isLoggedIn() async {

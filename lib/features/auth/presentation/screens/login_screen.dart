@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../providers/auth_provider.dart';
 import '../../util/auth_ui_helper.dart';
@@ -51,21 +52,38 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
       _submitError = null;
     });
     if (_emailError != null || _passwordError != null) return;
+
     setState(() {
       _isLoading = true;
     });
-    final controller = ref.read(authProvider.notifier);
-    final success = await controller.loginWithCredentials(email, password);
-    setState(() {
-      _isLoading = false;
-    });
-    if (success) {
-      if (context.mounted) {
-        context.go('/main');
+
+    try {
+      debugPrint('🔐 Starting login attempt for: $email');
+      final controller = ref.read(authProvider.notifier);
+      final success = await controller.loginWithCredentials(email, password);
+
+      debugPrint('🔐 Login result: $success');
+
+      if (success) {
+        debugPrint('✅ Login successful, navigating to main');
+        if (context.mounted) {
+          context.go('/main');
+        }
+      } else {
+        final errorMessage = ref.read(authProvider).errorMessage;
+        debugPrint('❌ Login failed: $errorMessage');
+        setState(() {
+          _submitError = errorMessage ?? '로그인에 실패했습니다. 다시 시도해주세요.';
+        });
       }
-    } else {
+    } catch (e) {
+      debugPrint('❌ Login exception: $e');
       setState(() {
-        _submitError = ref.read(authProvider).errorMessage;
+        _submitError = '네트워크 오류가 발생했습니다. 다시 시도해주세요.';
+      });
+    } finally {
+      setState(() {
+        _isLoading = false;
       });
     }
   }

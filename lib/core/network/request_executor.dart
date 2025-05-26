@@ -1,6 +1,8 @@
 import 'package:http/http.dart' as http;
 import 'package:flutter/foundation.dart';
+import 'package:http_parser/http_parser.dart';
 import 'network_exceptions.dart';
+import 'auth_interceptor.dart';
 
 class RequestExecutor {
   static const Duration timeoutDuration = Duration(seconds: 10);
@@ -31,6 +33,7 @@ class RequestExecutor {
     String url, {
     Map<String, String>? fields,
     Map<String, http.MultipartFile>? files,
+    AuthInterceptor? authInterceptor,
   }) async {
     debugPrint('🚀 $method Multipart Request to: $url');
     if (fields != null) {
@@ -43,27 +46,74 @@ class RequestExecutor {
     try {
       final request = http.MultipartRequest(method, Uri.parse(url));
 
+      // Convert fields to proper multipart files with JSON content-type
       if (fields != null) {
-        request.fields.addAll(fields);
+        for (final entry in fields.entries) {
+          if (entry.key == 'request') {
+            // Convert JSON request field to proper multipart file
+            final multipartJson = http.MultipartFile.fromString(
+              entry.key,
+              entry.value,
+              contentType: MediaType('application', 'json'),
+            );
+            request.files.add(multipartJson);
+          } else {
+            // Keep other fields as regular fields
+            request.fields[entry.key] = entry.value;
+          }
+        }
       }
 
       if (files != null) {
         request.files.addAll(files.values);
       }
 
-      final streamedResponse = await request.send().timeout(timeoutDuration);
-      final response = await http.Response.fromStream(streamedResponse);
-
-      debugPrint(
-        '📨 $method Multipart Response: ${response.statusCode} - ${response.body}',
-      );
-
-      if (response.statusCode >= 400) {
-        NetworkExceptions.handleErrorResponse(response, '$method Multipart');
+      // Explicitly set Content-Type for multipart requests
+      // This ensures the server receives the correct Content-Type header
+      if (!request.headers.containsKey('content-type') &&
+          !request.headers.containsKey('Content-Type')) {
+        // Let the MultipartRequest handle setting the boundary automatically
+        // We don't set it manually to avoid boundary conflicts
       }
 
-      debugPrint('✅ $method Multipart Success: ${response.statusCode}');
-      return response;
+      debugPrint('🔍 Request fields: ${request.fields}');
+      debugPrint(
+        '🔍 Request files: ${request.files.map((f) => '${f.field}: ${f.filename}')}',
+      );
+      debugPrint('🔍 Request headers: ${request.headers}');
+
+      // Use auth interceptor if provided (it now handles the full request/response cycle)
+      if (authInterceptor != null) {
+        final response = await authInterceptor.interceptMultipartRequest(
+          request,
+        );
+
+        debugPrint(
+          '📨 $method Multipart Response: ${response.statusCode} - ${response.body}',
+        );
+
+        if (response.statusCode >= 400) {
+          NetworkExceptions.handleErrorResponse(response, '$method Multipart');
+        }
+
+        debugPrint('✅ $method Multipart Success: ${response.statusCode}');
+        return response;
+      } else {
+        // Fallback for requests without auth interceptor
+        final streamedResponse = await request.send().timeout(timeoutDuration);
+        final response = await http.Response.fromStream(streamedResponse);
+
+        debugPrint(
+          '📨 $method Multipart Response: ${response.statusCode} - ${response.body}',
+        );
+
+        if (response.statusCode >= 400) {
+          NetworkExceptions.handleErrorResponse(response, '$method Multipart');
+        }
+
+        debugPrint('✅ $method Multipart Success: ${response.statusCode}');
+        return response;
+      }
     } catch (e) {
       if (e is String) {
         rethrow;
