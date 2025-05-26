@@ -58,11 +58,7 @@ class SecureStorage {
     return accessToken != null;
   }
 
-  Future<bool> handleLoginResponse(
-    String responseBody,
-    int statusCode,
-    String username,
-  ) async {
+  Future<bool> handleTokenResponse(String responseBody, int statusCode) async {
     if (statusCode == 200) {
       try {
         final Map<String, dynamic> response = json.decode(responseBody);
@@ -75,8 +71,7 @@ class SecureStorage {
 
         await saveAccessToken(accessToken);
         await saveRefreshToken(refreshToken);
-        await saveUsername(username);
-        await saveName(AuthValidator.generateNickname(username));
+
         return true;
       } catch (e) {
         throw Exception('Failed to process login response: $e');
@@ -86,5 +81,10 @@ class SecureStorage {
     } else {
       throw Exception('Unexpected error occurred');
     }
+  }
+
+  Future<void> handleUserInfoSave(String username) async {
+    await saveUsername(username);
+    await saveName(AuthValidator.generateNickname(username));
   }
 }

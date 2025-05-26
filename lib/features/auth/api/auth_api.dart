@@ -22,10 +22,10 @@ class AuthApi {
       );
 
       if (response.statusCode == 200) {
-        return await _secureStorage.handleLoginResponse(
+        await _secureStorage.handleUserInfoSave(username);
+        return await _secureStorage.handleTokenResponse(
           response.body,
           response.statusCode,
-          username,
         );
       } else {
         try {
@@ -58,6 +58,25 @@ class AuthApi {
         },
       );
       return response;
+    } catch (e) {
+      rethrow;
+    }
+  }
+
+  Future<bool> refreshToken(String refreshToken) async {
+    try {
+      final response = await _apiClient.post(
+        '/auth/refresh',
+        body: {'refreshToken': refreshToken},
+      );
+      if (response.statusCode == 200) {
+        return await _secureStorage.handleTokenResponse(
+          response.body,
+          response.statusCode,
+        );
+      } else {
+        throw Exception('Failed to refresh token');
+      }
     } catch (e) {
       rethrow;
     }
