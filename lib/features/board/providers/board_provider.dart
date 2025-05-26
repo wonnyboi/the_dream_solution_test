@@ -1,4 +1,5 @@
 import 'dart:typed_data';
+import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:the_dream_solution/features/board/api/board_api.dart';
 import 'package:the_dream_solution/features/board/model/board_model.dart';
@@ -18,7 +19,6 @@ class BoardState {
   final bool isCreating;
   final bool isUpdating;
   final bool isDeleting;
-  final String? errorMessage;
   final int currentPage;
   final int pageSize;
   final bool hasMoreData;
@@ -33,7 +33,6 @@ class BoardState {
     this.isCreating = false,
     this.isUpdating = false,
     this.isDeleting = false,
-    this.errorMessage,
     this.currentPage = 0,
     this.pageSize = 10,
     this.hasMoreData = false,
@@ -49,7 +48,6 @@ class BoardState {
     bool? isCreating,
     bool? isUpdating,
     bool? isDeleting,
-    String? errorMessage,
     int? currentPage,
     int? pageSize,
     bool? hasMoreData,
@@ -64,7 +62,6 @@ class BoardState {
       isCreating: isCreating ?? this.isCreating,
       isUpdating: isUpdating ?? this.isUpdating,
       isDeleting: isDeleting ?? this.isDeleting,
-      errorMessage: errorMessage ?? this.errorMessage,
       currentPage: currentPage ?? this.currentPage,
       pageSize: pageSize ?? this.pageSize,
       hasMoreData: hasMoreData ?? this.hasMoreData,
@@ -78,7 +75,7 @@ class BoardNotifier extends StateNotifier<BoardState> {
 
   BoardNotifier(this._boardApi) : super(const BoardState());
 
-  // 보드 목록 페이지네이션
+  // 보드 목록 페이지네이션 - throws exception on error
   Future<void> loadBoards({
     int? page,
     int? size,
@@ -88,14 +85,9 @@ class BoardNotifier extends StateNotifier<BoardState> {
     final pageSize = size ?? state.pageSize;
 
     if (isRefresh) {
-      state = state.copyWith(
-        isLoading: true,
-        errorMessage: null,
-        boards: [],
-        currentPage: 0,
-      );
+      state = state.copyWith(isLoading: true, boards: [], currentPage: 0);
     } else {
-      state = state.copyWith(isLoading: true, errorMessage: null);
+      state = state.copyWith(isLoading: true);
     }
 
     try {
@@ -114,7 +106,8 @@ class BoardNotifier extends StateNotifier<BoardState> {
         totalElements: response.totalElements,
       );
     } catch (e) {
-      state = state.copyWith(isLoading: false, errorMessage: e.toString());
+      state = state.copyWith(isLoading: false);
+      rethrow; // Let the UI handle the error locally
     }
   }
 
@@ -125,60 +118,60 @@ class BoardNotifier extends StateNotifier<BoardState> {
     }
   }
 
-  // 보드 상세페이지
+  // 보드 상세페이지 - throws exception on error
   Future<void> loadBoardDetail(int id) async {
-    state = state.copyWith(isLoadingDetail: true, errorMessage: null);
+    debugPrint('🔍 BoardNotifier.loadBoardDetail called for ID: $id');
+    state = state.copyWith(isLoadingDetail: true);
 
     try {
       final response = await _boardApi.getBoardDetail(id);
+      debugPrint('✅ BoardNotifier: Board detail loaded successfully');
       state = state.copyWith(selectedBoard: response, isLoadingDetail: false);
     } catch (e) {
-      state = state.copyWith(
-        isLoadingDetail: false,
-        errorMessage: e.toString(),
-      );
+      debugPrint('❌ BoardNotifier: Error loading board detail: $e');
+      state = state.copyWith(isLoadingDetail: false);
+      rethrow; // Let the UI handle the error locally
     }
   }
 
-  // 카테고리
+  // 카테고리 - throws exception on error
   Future<void> loadCategories() async {
-    try {
-      final categories = await _boardApi.getBoardCategories();
-      state = state.copyWith(categories: categories);
-    } catch (e) {
-      state = state.copyWith(errorMessage: e.toString());
-    }
+    final categories = await _boardApi.getBoardCategories();
+    state = state.copyWith(categories: categories);
   }
 
-  // 보드 생성
-  Future<bool> createBoard({
+  // 보드 생성 - returns null on error
+  Future<int?> createBoard({
     required BoardRequest request,
     String? imagePath,
   }) async {
-    state = state.copyWith(isCreating: true, errorMessage: null);
+    state = state.copyWith(isCreating: true);
 
     try {
-      await _boardApi.createBoard(request: request, imagePath: imagePath);
+      final createdBoardId = await _boardApi.createBoard(
+        request: request,
+        imagePath: imagePath,
+      );
 
       state = state.copyWith(isCreating: false);
 
       // 생성 후 보드 리스트 새로고침
       await loadBoards(isRefresh: true);
 
-      return true;
+      return createdBoardId;
     } catch (e) {
-      state = state.copyWith(isCreating: false, errorMessage: e.toString());
-      return false;
+      state = state.copyWith(isCreating: false);
+      rethrow; // Let the UI handle the error locally
     }
   }
 
-  // 보드 수정
-  Future<bool> updateBoard({
+  // 보드 수정 - throws exception on error
+  Future<void> updateBoard({
     required int id,
     required BoardRequest request,
     String? imagePath,
   }) async {
-    state = state.copyWith(isUpdating: true, errorMessage: null);
+    state = state.copyWith(isUpdating: true);
 
     try {
       await _boardApi.updateBoard(
@@ -192,17 +185,15 @@ class BoardNotifier extends StateNotifier<BoardState> {
       // Refresh boards list and detail after update
       await loadBoards(isRefresh: true);
       await loadBoardDetail(id);
-
-      return true;
     } catch (e) {
-      state = state.copyWith(isUpdating: false, errorMessage: e.toString());
-      return false;
+      state = state.copyWith(isUpdating: false);
+      rethrow; // Let the UI handle the error locally
     }
   }
 
-  // 보드 삭제
-  Future<bool> deleteBoard(int id) async {
-    state = state.copyWith(isDeleting: true, errorMessage: null);
+  // 보드 삭제 - throws exception on error
+  Future<void> deleteBoard(int id) async {
+    state = state.copyWith(isDeleting: true);
 
     try {
       await _boardApi.deleteBoard(id);
@@ -211,22 +202,20 @@ class BoardNotifier extends StateNotifier<BoardState> {
 
       // Refresh boards list after deletion
       await loadBoards(isRefresh: true);
-
-      return true;
     } catch (e) {
-      state = state.copyWith(isDeleting: false, errorMessage: e.toString());
-      return false;
+      state = state.copyWith(isDeleting: false);
+      rethrow; // Let the UI handle the error locally
     }
-  }
-
-  // 에러 메시지 초기화
-  void clearError() {
-    state = state.copyWith(errorMessage: null);
   }
 
   // 선택된 보드 초기화
   void clearSelectedBoard() {
     state = state.copyWith(selectedBoard: null);
+  }
+
+  // 보드 상세 상태 완전 초기화 (새로운 상세 페이지 진입 시 사용)
+  void resetDetailState() {
+    state = state.copyWith(selectedBoard: null, isLoadingDetail: false);
   }
 
   // 모든 데이터 새로고침

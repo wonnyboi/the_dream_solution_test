@@ -41,8 +41,19 @@ class _MainScreenState extends ConsumerState<MainScreen> {
   }
 
   Future<void> _loadBoardData() async {
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      ref.read(boardProvider.notifier).refresh();
+    WidgetsBinding.instance.addPostFrameCallback((_) async {
+      try {
+        await ref.read(boardProvider.notifier).refresh();
+      } catch (e) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text('데이터 로딩 중 오류가 발생했습니다: $e'),
+              backgroundColor: Colors.red,
+            ),
+          );
+        }
+      }
     });
   }
 
@@ -95,7 +106,20 @@ class _MainScreenState extends ConsumerState<MainScreen> {
               Row(
                 children: [
                   IconButton(
-                    onPressed: () => boardNotifier.refresh(),
+                    onPressed: () async {
+                      try {
+                        await boardNotifier.refresh();
+                      } catch (e) {
+                        if (mounted) {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            SnackBar(
+                              content: Text('새로고침 중 오류가 발생했습니다: $e'),
+                              backgroundColor: Colors.red,
+                            ),
+                          );
+                        }
+                      }
+                    },
                     icon: const Icon(Icons.refresh),
                   ),
                   IconButton(
@@ -107,33 +131,6 @@ class _MainScreenState extends ConsumerState<MainScreen> {
             ],
           ),
           const SizedBox(height: 16),
-
-          if (boardState.errorMessage != null)
-            Container(
-              width: double.infinity,
-              padding: const EdgeInsets.all(12),
-              margin: const EdgeInsets.only(bottom: 16),
-              decoration: BoxDecoration(
-                color: Colors.red.shade100,
-                borderRadius: BorderRadius.circular(8),
-              ),
-              child: Row(
-                children: [
-                  Icon(Icons.error, color: Colors.red.shade700),
-                  const SizedBox(width: 8),
-                  Expanded(
-                    child: Text(
-                      boardState.errorMessage!,
-                      style: TextStyle(color: Colors.red.shade700),
-                    ),
-                  ),
-                  IconButton(
-                    onPressed: () => boardNotifier.clearError(),
-                    icon: const Icon(Icons.close),
-                  ),
-                ],
-              ),
-            ),
 
           Expanded(
             child:
@@ -170,8 +167,7 @@ class _MainScreenState extends ConsumerState<MainScreen> {
                               Icons.arrow_forward_ios,
                               size: 16,
                             ),
-                            onTap:
-                                () => boardNotifier.loadBoardDetail(board.id),
+                            onTap: () => context.go('/board/${board.id}'),
                           ),
                         );
                       },
@@ -186,7 +182,20 @@ class _MainScreenState extends ConsumerState<MainScreen> {
                   onPressed:
                       boardState.isLoading
                           ? null
-                          : () => boardNotifier.loadMoreBoards(),
+                          : () async {
+                            try {
+                              await boardNotifier.loadMoreBoards();
+                            } catch (e) {
+                              if (mounted) {
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  SnackBar(
+                                    content: Text('더 보기 중 오류가 발생했습니다: $e'),
+                                    backgroundColor: Colors.red,
+                                  ),
+                                );
+                              }
+                            }
+                          },
                   child:
                       boardState.isLoading
                           ? const SizedBox(
@@ -231,6 +240,8 @@ class _MainScreenState extends ConsumerState<MainScreen> {
                 child: SingleChildScrollView(
                   child: Column(
                     children: [
+                      _buildBoardListSection(),
+                      const SizedBox(height: 24),
                       Container(
                         width: 900,
                         height: 600,
@@ -252,8 +263,6 @@ class _MainScreenState extends ConsumerState<MainScreen> {
                           shrinkWrap: true,
                         ),
                       ),
-                      const SizedBox(height: 24),
-                      _buildBoardListSection(),
                       const SizedBox(height: 24),
                     ],
                   ),

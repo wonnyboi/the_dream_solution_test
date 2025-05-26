@@ -1,4 +1,5 @@
 import 'package:http/http.dart' as http;
+import 'package:flutter/foundation.dart';
 import 'package:the_dream_solution/core/network/api_client.dart';
 import 'package:the_dream_solution/core/storage/secure_storage.dart';
 import 'dart:convert';
@@ -105,16 +106,21 @@ class AuthApi {
 
   Future<bool> refreshToken(String refreshToken) async {
     try {
+      debugPrint(
+        '🔄 AuthApi.refreshToken called with token: ${refreshToken.substring(0, 20)}...',
+      );
       final http.Response response;
 
       if (_apiClient != null) {
         // Use ApiClient when available (normal flow)
+        debugPrint('🔄 Using ApiClient for refresh token request');
         response = await _apiClient.post(
           '/auth/refresh',
           body: {'refreshToken': refreshToken},
         );
       } else {
         // Use direct HTTP call when called from interceptor
+        debugPrint('🔄 Using direct HTTP call for refresh token request');
         const String baseUrl = 'https://front-mission.bigs.or.kr';
         final url = Uri.parse('$baseUrl/auth/refresh');
         response = await _httpClient.post(
@@ -127,15 +133,23 @@ class AuthApi {
         );
       }
 
+      debugPrint('🔄 Refresh token response: ${response.statusCode}');
+      debugPrint('🔄 Refresh token body: ${response.body}');
+
       if (response.statusCode == 200) {
+        debugPrint('✅ Refresh token successful, saving new tokens');
         return await _secureStorage.handleTokenResponse(
           response.body,
           response.statusCode,
         );
       } else {
-        throw Exception('Failed to refresh token');
+        debugPrint(
+          '❌ Refresh token failed with status: ${response.statusCode}',
+        );
+        throw Exception('Failed to refresh token: ${response.statusCode}');
       }
     } catch (e) {
+      debugPrint('❌ Exception in refreshToken: $e');
       rethrow;
     }
   }

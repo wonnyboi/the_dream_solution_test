@@ -3,6 +3,7 @@ import 'package:go_router/go_router.dart';
 import 'package:the_dream_solution/features/auth/presentation/screens/login_screen.dart';
 import 'package:the_dream_solution/features/auth/presentation/screens/signup_screen.dart';
 import 'package:the_dream_solution/features/board/presentation/screens/board_create_screen.dart';
+import 'package:the_dream_solution/features/board/presentation/screens/board_detail_screen.dart';
 import 'package:the_dream_solution/features/main/presentation/screens/main_screen.dart';
 import 'package:the_dream_solution/core/storage/secure_storage.dart';
 import 'package:the_dream_solution/core/services/navigation_service.dart';
@@ -33,6 +34,13 @@ final goRouter = GoRouter(
     GoRoute(
       path: '/board/create',
       builder: (context, state) => const BoardCreateScreen(),
+    ),
+    GoRoute(
+      path: '/board/:id',
+      builder: (context, state) {
+        final id = int.parse(state.pathParameters['id']!);
+        return BoardDetailScreen(boardId: id);
+      },
     ),
   ],
 );

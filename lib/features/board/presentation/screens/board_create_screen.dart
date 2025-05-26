@@ -118,7 +118,6 @@ class _BoardCreateScreenState extends ConsumerState<BoardCreateScreen> {
   }
 
   Future<void> _createBoard() async {
-    // Validate all fields
     _validateTitle(_titleController.text);
     _validateContent(_contentController.text);
     _validateCategory(_selectedCategory);
@@ -133,21 +132,29 @@ class _BoardCreateScreenState extends ConsumerState<BoardCreateScreen> {
       category: _selectedCategory,
     );
 
-    final success = await ref
-        .read(boardProvider.notifier)
-        .createBoard(request: boardRequest, imagePath: _selectedImage?.path);
+    try {
+      final createdBoardId = await ref
+          .read(boardProvider.notifier)
+          .createBoard(request: boardRequest, imagePath: _selectedImage?.path);
 
-    if (mounted) {
-      if (success) {
+      if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
             content: Text('게시글이 성공적으로 작성되었습니다!'),
             backgroundColor: Colors.green,
           ),
         );
-        context.go('/main');
-      } else {
-        // Error message will be shown in the form
+        // Navigate to the created board's detail page
+        context.go('/board/$createdBoardId');
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('게시글 작성 중 오류가 발생했습니다: $e'),
+            backgroundColor: Colors.red,
+          ),
+        );
       }
     }
   }
@@ -403,37 +410,7 @@ class _BoardCreateScreenState extends ConsumerState<BoardCreateScreen> {
                 const SizedBox(height: 24),
 
                 _buildImageSection(),
-                const SizedBox(height: 24),
-
-                if (boardState.errorMessage != null) ...[
-                  Container(
-                    width: double.infinity,
-                    padding: const EdgeInsets.all(12),
-                    decoration: BoxDecoration(
-                      color: Colors.red.shade100,
-                      borderRadius: BorderRadius.circular(8),
-                    ),
-                    child: Row(
-                      children: [
-                        Icon(Icons.error, color: Colors.red.shade700),
-                        const SizedBox(width: 8),
-                        Expanded(
-                          child: Text(
-                            boardState.errorMessage!,
-                            style: TextStyle(color: Colors.red.shade700),
-                          ),
-                        ),
-                        IconButton(
-                          onPressed:
-                              () =>
-                                  ref.read(boardProvider.notifier).clearError(),
-                          icon: const Icon(Icons.close),
-                        ),
-                      ],
-                    ),
-                  ),
-                  const SizedBox(height: 24),
-                ],
+                const SizedBox(height: 32),
 
                 _buildCreateButton(),
               ],

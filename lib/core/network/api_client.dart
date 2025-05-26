@@ -20,15 +20,19 @@ class ApiClient {
     debugPrint('🚀 GET Request to: $baseUrl$endpoint');
     final url = '$baseUrl$endpoint';
 
-    return RequestExecutor.executeRequest(() async {
-      final headers = await _authInterceptor.getAuthenticatedHeaders(url, {
-        'Content-Type': 'application/json',
-      });
+    return _authInterceptor.interceptRequest(
+      () async {
+        final headers = await _authInterceptor.getAuthenticatedHeaders(url, {
+          'Content-Type': 'application/json',
+        });
 
-      return await _client
-          .get(Uri.parse(url), headers: headers)
-          .timeout(RequestExecutor.timeoutDuration);
-    }, 'GET');
+        return await _client
+            .get(Uri.parse(url), headers: headers)
+            .timeout(RequestExecutor.timeoutDuration);
+      },
+      url,
+      {'Content-Type': 'application/json'},
+    );
   }
 
   Future<http.Response> post(
@@ -41,23 +45,29 @@ class ApiClient {
     }
     final url = '$baseUrl$endpoint';
 
-    return RequestExecutor.executeRequest(() async {
-      final headers = await _authInterceptor.getAuthenticatedHeaders(url, {
-        'Content-Type': 'application/json',
-        'Accept': 'application/json',
-      });
+    return _authInterceptor.interceptRequest(
+      () async {
+        final headers = await _authInterceptor.getAuthenticatedHeaders(url, {
+          'Content-Type': 'application/json',
+          'Accept': 'application/json',
+        });
 
-      final response = await _client
-          .post(
-            Uri.parse(url),
-            headers: headers,
-            body: body != null ? jsonEncode(body) : null,
-          )
-          .timeout(RequestExecutor.timeoutDuration);
+        final response = await _client
+            .post(
+              Uri.parse(url),
+              headers: headers,
+              body: body != null ? jsonEncode(body) : null,
+            )
+            .timeout(RequestExecutor.timeoutDuration);
 
-      debugPrint('📨 POST Response: ${response.statusCode} - ${response.body}');
-      return response;
-    }, 'POST');
+        debugPrint(
+          '📨 POST Response: ${response.statusCode} - ${response.body}',
+        );
+        return response;
+      },
+      url,
+      {'Content-Type': 'application/json', 'Accept': 'application/json'},
+    );
   }
 
   Future<http.Response> patch(
@@ -70,25 +80,29 @@ class ApiClient {
     }
     final url = '$baseUrl$endpoint';
 
-    return RequestExecutor.executeRequest(() async {
-      final headers = await _authInterceptor.getAuthenticatedHeaders(url, {
-        'Content-Type': 'application/json',
-        'Accept': 'application/json',
-      });
+    return _authInterceptor.interceptRequest(
+      () async {
+        final headers = await _authInterceptor.getAuthenticatedHeaders(url, {
+          'Content-Type': 'application/json',
+          'Accept': 'application/json',
+        });
 
-      final response = await _client
-          .patch(
-            Uri.parse(url),
-            headers: headers,
-            body: body != null ? jsonEncode(body) : null,
-          )
-          .timeout(RequestExecutor.timeoutDuration);
+        final response = await _client
+            .patch(
+              Uri.parse(url),
+              headers: headers,
+              body: body != null ? jsonEncode(body) : null,
+            )
+            .timeout(RequestExecutor.timeoutDuration);
 
-      debugPrint(
-        '📨 PATCH Response: ${response.statusCode} - ${response.body}',
-      );
-      return response;
-    }, 'PATCH');
+        debugPrint(
+          '📨 PATCH Response: ${response.statusCode} - ${response.body}',
+        );
+        return response;
+      },
+      url,
+      {'Content-Type': 'application/json', 'Accept': 'application/json'},
+    );
   }
 
   Future<http.Response> patchMultipart(
@@ -129,20 +143,24 @@ class ApiClient {
     }
     final url = '$baseUrl$endpoint';
 
-    return RequestExecutor.executeRequest(() async {
-      final headers = await _authInterceptor.getAuthenticatedHeaders(url, {
-        'Content-Type': 'application/json',
-        'Accept': 'application/json',
-      });
+    return _authInterceptor.interceptRequest(
+      () async {
+        final headers = await _authInterceptor.getAuthenticatedHeaders(url, {
+          'Content-Type': 'application/json',
+          'Accept': 'application/json',
+        });
 
-      return await _client
-          .delete(
-            Uri.parse(url),
-            headers: headers,
-            body: body != null ? jsonEncode(body) : null,
-          )
-          .timeout(RequestExecutor.timeoutDuration);
-    }, 'DELETE');
+        return await _client
+            .delete(
+              Uri.parse(url),
+              headers: headers,
+              body: body != null ? jsonEncode(body) : null,
+            )
+            .timeout(RequestExecutor.timeoutDuration);
+      },
+      url,
+      {'Content-Type': 'application/json', 'Accept': 'application/json'},
+    );
   }
 
   void dispose() {

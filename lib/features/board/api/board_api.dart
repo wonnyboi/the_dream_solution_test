@@ -54,13 +54,21 @@ class BoardApi {
   }
 
   Future<BoardDetailResponse> getBoardDetail(int id) async {
+    debugPrint('📋 Getting board detail for ID: $id');
     final response = await ApiClient().get('/boards/$id');
+    debugPrint('📨 Board detail response: ${response.statusCode}');
+    debugPrint('📨 Board detail body: ${response.body}');
+
     if (response.statusCode == 200) {
       final String decodedBody = utf8.decode(response.bodyBytes);
       final Map<String, dynamic> jsonResponse = json.decode(decodedBody);
+      debugPrint('✅ Board detail parsed successfully');
       return BoardDetailResponse.fromJson(jsonResponse);
     } else {
-      throw Exception('Failed to get board detail');
+      debugPrint(
+        '❌ Failed to get board detail: ${response.statusCode} - ${response.body}',
+      );
+      throw Exception('Failed to get board detail: ${response.statusCode}');
     }
   }
 
@@ -75,7 +83,7 @@ class BoardApi {
     }
   }
 
-  Future<void> createBoard({
+  Future<int> createBoard({
     required BoardRequest request,
     String? imagePath,
   }) async {
@@ -129,7 +137,14 @@ class BoardApi {
 
       if (response.statusCode == 200 || response.statusCode == 201) {
         debugPrint('✅ Board created successfully');
-        return;
+
+        // Parse the response to get the created board ID
+        final String decodedBody = utf8.decode(response.bodyBytes);
+        final Map<String, dynamic> jsonResponse = json.decode(decodedBody);
+        final int createdBoardId = jsonResponse['id'] as int;
+
+        debugPrint('📝 Created board ID: $createdBoardId');
+        return createdBoardId;
       } else {
         debugPrint('❌ Failed to create board: ${response.statusCode}');
         throw Exception('Failed to create board: ${response.body}');

@@ -33,7 +33,9 @@ class AuthInterceptor {
         return false;
       }
 
-      debugPrint('🔄 Attempting to refresh access token');
+      debugPrint(
+        '🔄 Attempting to refresh access token with refresh token: ${refreshToken.substring(0, 20)}...',
+      );
 
       // Create a simple AuthApi instance without circular dependency
       _authApi ??= AuthApi(secureStorage: _secureStorage);
