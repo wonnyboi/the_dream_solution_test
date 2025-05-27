@@ -205,6 +205,10 @@ class _BoardListScreenState extends ConsumerState<BoardListScreen>
         return Card(
           margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
           child: ListTile(
+            tileColor: Colors.white,
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(16),
+            ),
             title: Text(board.title),
             subtitle: Text(
               '${boardState.categories[board.category] ?? board.category} • ${board.createdAt.toString().split(' ')[0]}',
