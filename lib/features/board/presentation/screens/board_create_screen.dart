@@ -33,13 +33,19 @@ class _BoardCreateScreenState extends ConsumerState<BoardCreateScreen> {
   @override
   void initState() {
     super.initState();
-    // Load categories when screen initializes
     WidgetsBinding.instance.addPostFrameCallback((_) {
       ref.read(boardProvider.notifier).loadCategories();
       if (_isEditMode) {
         _loadBoardForEdit();
       }
     });
+  }
+
+  @override
+  void dispose() {
+    _titleController.dispose();
+    _contentController.dispose();
+    super.dispose();
   }
 
   Future<void> _loadBoardForEdit() async {
@@ -70,10 +76,229 @@ class _BoardCreateScreenState extends ConsumerState<BoardCreateScreen> {
   }
 
   @override
-  void dispose() {
-    _titleController.dispose();
-    _contentController.dispose();
-    super.dispose();
+  Widget build(BuildContext context) {
+    return Scaffold(
+      backgroundColor: const Color(0xFFF7F9FB),
+      appBar: _buildAppBar(),
+      body: SingleChildScrollView(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            _buildTitleField(),
+            const SizedBox(height: 16),
+            _buildCategoryField(),
+            const SizedBox(height: 16),
+            _buildImageField(),
+            const SizedBox(height: 16),
+            _buildContentField(),
+          ],
+        ),
+      ),
+    );
+  }
+
+  AppBar _buildAppBar() {
+    return AppBar(
+      backgroundColor: const Color(0xFFF7F9FB),
+      title: Text(_isEditMode ? '게시글 수정' : '게시글 작성'),
+      leading: IconButton(
+        icon: const Icon(Icons.arrow_back),
+        onPressed: () => context.pop(),
+      ),
+      actions: [
+        TextButton(
+          onPressed: _isFormValid() ? _createBoard : null,
+          child: Text(
+            _isEditMode ? '수정' : '작성',
+            style: TextStyle(
+              color: _isFormValid() ? Colors.blue : Colors.grey,
+              fontWeight: FontWeight.bold,
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildTitleField() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const Text('제목', style: TextStyle(fontWeight: FontWeight.w500)),
+        const SizedBox(height: 8),
+        TextFormField(
+          controller: _titleController,
+          onChanged: _validateTitle,
+          decoration: InputDecoration(
+            hintText: '게시글 제목을 입력해주세요',
+            filled: true,
+            fillColor: const Color(0xFFF1F5F9),
+            border: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(8),
+              borderSide: BorderSide.none,
+            ),
+            errorText: _titleError,
+            suffixIcon: _buildCheckIcon(
+              _titleError == null && _titleController.text.isNotEmpty,
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildCategoryField() {
+    final categories = ref.watch(boardProvider).categories;
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const Text('카테고리', style: TextStyle(fontWeight: FontWeight.w500)),
+        const SizedBox(height: 8),
+        Container(
+          padding: const EdgeInsets.symmetric(horizontal: 12),
+          decoration: BoxDecoration(
+            color: const Color(0xFFF1F5F9),
+            borderRadius: BorderRadius.circular(8),
+          ),
+          child: DropdownButtonHideUnderline(
+            child: DropdownButton<String>(
+              value: _selectedCategory.isEmpty ? null : _selectedCategory,
+              isExpanded: true,
+              hint: const Text('카테고리를 선택해주세요'),
+              items:
+                  categories.entries.map((entry) {
+                    return DropdownMenuItem<String>(
+                      value: entry.key,
+                      child: Text(entry.value),
+                    );
+                  }).toList(),
+              onChanged: (value) {
+                if (value != null) {
+                  setState(() {
+                    _selectedCategory = value;
+                    _validateCategory(value);
+                  });
+                }
+              },
+            ),
+          ),
+        ),
+        if (_categoryError != null)
+          Padding(
+            padding: const EdgeInsets.only(top: 8),
+            child: Text(
+              _categoryError!,
+              style: const TextStyle(color: Colors.red, fontSize: 12),
+            ),
+          ),
+      ],
+    );
+  }
+
+  Widget _buildImageField() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const Text('이미지', style: TextStyle(fontWeight: FontWeight.w500)),
+        const SizedBox(height: 8),
+        Container(
+          width: double.infinity,
+          height: 200,
+          decoration: BoxDecoration(
+            color: const Color(0xFFF1F5F9),
+            borderRadius: BorderRadius.circular(8),
+          ),
+          child:
+              _selectedImage != null
+                  ? Stack(
+                    children: [
+                      ClipRRect(
+                        borderRadius: BorderRadius.circular(8),
+                        child: Image.file(
+                          _selectedImage!,
+                          width: double.infinity,
+                          height: 200,
+                          fit: BoxFit.cover,
+                        ),
+                      ),
+                      Positioned(
+                        top: 8,
+                        right: 8,
+                        child: IconButton(
+                          icon: const Icon(Icons.close, color: Colors.white),
+                          onPressed: _removeImage,
+                        ),
+                      ),
+                    ],
+                  )
+                  : _existingImageUrl != null
+                  ? Stack(
+                    children: [
+                      ClipRRect(
+                        borderRadius: BorderRadius.circular(8),
+                        child: Image.network(
+                          _existingImageUrl!,
+                          width: double.infinity,
+                          height: 200,
+                          fit: BoxFit.cover,
+                        ),
+                      ),
+                      Positioned(
+                        top: 8,
+                        right: 8,
+                        child: IconButton(
+                          icon: const Icon(Icons.close, color: Colors.white),
+                          onPressed: _removeImage,
+                        ),
+                      ),
+                    ],
+                  )
+                  : Center(
+                    child: TextButton.icon(
+                      onPressed: _pickImage,
+                      icon: const Icon(Icons.add_photo_alternate),
+                      label: const Text('이미지 추가'),
+                    ),
+                  ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildContentField() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const Text('내용', style: TextStyle(fontWeight: FontWeight.w500)),
+        const SizedBox(height: 8),
+        TextFormField(
+          controller: _contentController,
+          onChanged: _validateContent,
+          maxLines: 10,
+          decoration: InputDecoration(
+            hintText: '게시글 내용을 입력해주세요',
+            filled: true,
+            fillColor: const Color(0xFFF1F5F9),
+            border: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(8),
+              borderSide: BorderSide.none,
+            ),
+            errorText: _contentError,
+            suffixIcon: _buildCheckIcon(
+              _contentError == null && _contentController.text.isNotEmpty,
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildCheckIcon(bool isValid) {
+    return isValid
+        ? const Icon(Icons.check_circle, color: Colors.green, size: 20)
+        : const SizedBox.shrink();
   }
 
   void _validateTitle(String value) {
@@ -140,6 +365,7 @@ class _BoardCreateScreenState extends ConsumerState<BoardCreateScreen> {
   void _removeImage() {
     setState(() {
       _selectedImage = null;
+      _existingImageUrl = null;
     });
   }
 
@@ -216,312 +442,5 @@ class _BoardCreateScreenState extends ConsumerState<BoardCreateScreen> {
         );
       }
     }
-  }
-
-  Widget _buildCheckIcon(bool isValid) {
-    return isValid
-        ? const Icon(Icons.check_circle, color: Colors.green, size: 20)
-        : const SizedBox.shrink();
-  }
-
-  Widget _buildTitleField() {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        const Text('제목', style: TextStyle(fontWeight: FontWeight.w500)),
-        const SizedBox(height: 8),
-        TextFormField(
-          controller: _titleController,
-          onChanged: _validateTitle,
-          decoration: InputDecoration(
-            hintText: '게시글 제목을 입력해주세요',
-            filled: true,
-            fillColor: const Color(0xFFF1F5F9),
-            border: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(8),
-              borderSide: BorderSide.none,
-            ),
-            errorText: _titleError,
-            suffixIcon: _buildCheckIcon(
-              _titleError == null && _titleController.text.isNotEmpty,
-            ),
-          ),
-        ),
-      ],
-    );
-  }
-
-  Widget _buildContentField() {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        const Text('내용', style: TextStyle(fontWeight: FontWeight.w500)),
-        const SizedBox(height: 8),
-        TextFormField(
-          controller: _contentController,
-          onChanged: _validateContent,
-          maxLines: 8,
-          decoration: InputDecoration(
-            hintText: '게시글 내용을 입력해주세요',
-            filled: true,
-            fillColor: const Color(0xFFF1F5F9),
-            border: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(8),
-              borderSide: BorderSide.none,
-            ),
-            errorText: _contentError,
-            alignLabelWithHint: true,
-          ),
-        ),
-      ],
-    );
-  }
-
-  Widget _buildCategoryField() {
-    final boardState = ref.watch(boardProvider);
-
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        const Text('카테고리', style: TextStyle(fontWeight: FontWeight.w500)),
-        const SizedBox(height: 8),
-        DropdownButtonFormField<String>(
-          dropdownColor: Colors.white,
-          value: _selectedCategory.isEmpty ? null : _selectedCategory,
-          onChanged: (String? value) {
-            setState(() {
-              _selectedCategory = value ?? '';
-            });
-            _validateCategory(value ?? '');
-          },
-          decoration: InputDecoration(
-            hintText: '카테고리를 선택해주세요',
-            filled: true,
-            fillColor: const Color(0xFFF1F5F9),
-            border: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(8),
-              borderSide: BorderSide.none,
-            ),
-            errorText: _categoryError,
-            suffixIcon: _buildCheckIcon(
-              _categoryError == null && _selectedCategory.isNotEmpty,
-            ),
-          ),
-          items:
-              boardState.categories.entries
-                  .map(
-                    (entry) => DropdownMenuItem<String>(
-                      value: entry.key,
-                      child: Text(entry.value),
-                    ),
-                  )
-                  .toList(),
-        ),
-      ],
-    );
-  }
-
-  Widget _buildImageSection() {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        const Text('이미지 (선택사항)', style: TextStyle(fontWeight: FontWeight.w500)),
-        const SizedBox(height: 8),
-        if (_selectedImage != null) ...[
-          Container(
-            width: double.infinity,
-            height: 200,
-            decoration: BoxDecoration(
-              borderRadius: BorderRadius.circular(8),
-              border: Border.all(color: Colors.grey.shade300),
-            ),
-            child: ClipRRect(
-              borderRadius: BorderRadius.circular(8),
-              child: Image.file(_selectedImage!, fit: BoxFit.cover),
-            ),
-          ),
-          const SizedBox(height: 8),
-          Row(
-            children: [
-              Expanded(
-                child: OutlinedButton.icon(
-                  onPressed: _pickImage,
-                  icon: const Icon(Icons.edit),
-                  label: const Text('이미지 변경'),
-                ),
-              ),
-              const SizedBox(width: 8),
-              Expanded(
-                child: OutlinedButton.icon(
-                  onPressed: _removeImage,
-                  icon: const Icon(Icons.delete),
-                  label: const Text('이미지 제거'),
-                  style: OutlinedButton.styleFrom(foregroundColor: Colors.red),
-                ),
-              ),
-            ],
-          ),
-        ] else if (_existingImageUrl != null) ...[
-          Container(
-            width: double.infinity,
-            height: 200,
-            decoration: BoxDecoration(
-              borderRadius: BorderRadius.circular(8),
-              border: Border.all(color: Colors.grey.shade300),
-            ),
-            child: ClipRRect(
-              borderRadius: BorderRadius.circular(8),
-              child: Image.network(_existingImageUrl!, fit: BoxFit.cover),
-            ),
-          ),
-          const SizedBox(height: 8),
-          Row(
-            children: [
-              Expanded(
-                child: OutlinedButton.icon(
-                  onPressed: _pickImage,
-                  icon: const Icon(Icons.edit),
-                  label: const Text('이미지 변경'),
-                ),
-              ),
-              const SizedBox(width: 8),
-              Expanded(
-                child: OutlinedButton.icon(
-                  onPressed: () {
-                    setState(() {
-                      _existingImageUrl = null;
-                    });
-                  },
-                  icon: const Icon(Icons.delete),
-                  label: const Text('이미지 제거'),
-                  style: OutlinedButton.styleFrom(foregroundColor: Colors.red),
-                ),
-              ),
-            ],
-          ),
-        ] else ...[
-          Container(
-            width: double.infinity,
-            height: 120,
-            decoration: BoxDecoration(
-              borderRadius: BorderRadius.circular(8),
-              border: Border.all(
-                color: Colors.grey.shade300,
-                style: BorderStyle.solid,
-              ),
-              color: const Color(0xFFF1F5F9),
-            ),
-            child: InkWell(
-              onTap: _pickImage,
-              borderRadius: BorderRadius.circular(8),
-              child: const Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  Icon(Icons.add_photo_alternate, size: 48, color: Colors.grey),
-                  SizedBox(height: 8),
-                  Text(
-                    '이미지를 선택해주세요',
-                    style: TextStyle(color: Colors.grey, fontSize: 16),
-                  ),
-                ],
-              ),
-            ),
-          ),
-        ],
-      ],
-    );
-  }
-
-  Widget _buildCreateButton() {
-    final boardState = ref.watch(boardProvider);
-
-    return SizedBox(
-      width: double.infinity,
-      child: ElevatedButton(
-        onPressed: _createBoard,
-        style: ElevatedButton.styleFrom(
-          padding: const EdgeInsets.symmetric(vertical: 16),
-          backgroundColor: Colors.blue,
-          foregroundColor: Colors.white,
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-        ),
-        child:
-            boardState.isCreating || boardState.isUpdating
-                ? const CircularProgressIndicator(color: Colors.white)
-                : Text(
-                  _isEditMode ? '게시글 수정' : '게시글 작성',
-                  style: const TextStyle(fontSize: 16),
-                ),
-      ),
-    );
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    final boardState = ref.watch(boardProvider);
-
-    return Scaffold(
-      backgroundColor: const Color(0xFFF7F9FB),
-      appBar: AppBar(
-        title: Text(_isEditMode ? '게시글 수정' : '게시글 작성'),
-        backgroundColor: const Color(0xFFF7F9FB),
-        leading: IconButton(
-          icon: const Icon(Icons.arrow_back),
-          onPressed: () => context.pop(),
-        ),
-      ),
-      body: SingleChildScrollView(
-        padding: const EdgeInsets.all(24.0),
-        child: Center(
-          child: Container(
-            width: 600,
-            padding: const EdgeInsets.all(32.0),
-            decoration: BoxDecoration(
-              color: Colors.white,
-              borderRadius: BorderRadius.circular(16),
-              boxShadow: const [
-                BoxShadow(
-                  color: Colors.black12,
-                  blurRadius: 16,
-                  offset: Offset(0, 4),
-                ),
-              ],
-            ),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  _isEditMode ? '게시글 수정' : '새 게시글 작성',
-                  style: const TextStyle(
-                    fontSize: 28,
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
-                const SizedBox(height: 8),
-                Text(
-                  _isEditMode ? '게시글 정보를 수정해주세요' : '게시글 정보를 입력해주세요',
-                  style: const TextStyle(fontSize: 16, color: Colors.grey),
-                ),
-                const SizedBox(height: 32),
-
-                _buildTitleField(),
-                const SizedBox(height: 24),
-
-                _buildContentField(),
-                const SizedBox(height: 24),
-
-                _buildCategoryField(),
-                const SizedBox(height: 24),
-
-                _buildImageSection(),
-                const SizedBox(height: 32),
-
-                _buildCreateButton(),
-              ],
-            ),
-          ),
-        ),
-      ),
-    );
   }
 }

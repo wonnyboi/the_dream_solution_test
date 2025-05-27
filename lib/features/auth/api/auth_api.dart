@@ -2,8 +2,10 @@ import 'package:http/http.dart' as http;
 import 'package:flutter/foundation.dart';
 import 'package:the_dream_solution/core/network/api_client.dart';
 import 'package:the_dream_solution/core/storage/secure_storage.dart';
+import 'package:the_dream_solution/core/config/env.dart';
 import 'dart:convert';
 
+/// 인증 관련 API 처리
 class AuthApi {
   final ApiClient? _apiClient;
   final SecureStorage _secureStorage;
@@ -14,6 +16,7 @@ class AuthApi {
       _secureStorage = secureStorage ?? SecureStorage(),
       _httpClient = http.Client();
 
+  /// 로그인 처리
   Future<bool> login({
     required String username,
     required String password,
@@ -22,15 +25,12 @@ class AuthApi {
       final http.Response response;
 
       if (_apiClient != null) {
-        // Use ApiClient when available (normal flow)
         response = await _apiClient.post(
           '/auth/signin',
           body: {'username': username, 'password': password},
         );
       } else {
-        // Use direct HTTP call when called from interceptor (avoid circular dependency)
-        const String baseUrl = 'https://front-mission.bigs.or.kr';
-        final url = Uri.parse('$baseUrl/auth/signin');
+        final url = Uri.parse('${Env.dreamServer}/auth/signin');
         response = await _httpClient.post(
           url,
           headers: {
@@ -42,16 +42,15 @@ class AuthApi {
       }
 
       if (response.statusCode == 200) {
-        await _secureStorage.handleUserInfoSave(username);
         return await _secureStorage.handleTokenResponse(
           response.body,
           response.statusCode,
+          isLogin: true,
         );
       } else {
         try {
           final Map<String, dynamic> errorJson = json.decode(response.body);
-          final String message = errorJson['message'] ?? '알 수 없는 오류가 발생했습니다.';
-          throw message;
+          throw errorJson['message'] ?? '알 수 없는 오류가 발생했습니다.';
         } catch (_) {
           throw '알 수 없는 오류가 발생했습니다.';
         }
@@ -61,6 +60,7 @@ class AuthApi {
     }
   }
 
+  /// 회원가입 처리
   Future<http.Response> signup({
     required String username,
     required String name,
@@ -69,8 +69,7 @@ class AuthApi {
   }) async {
     try {
       if (_apiClient != null) {
-        // Use ApiClient when available (normal flow)
-        final response = await _apiClient.post(
+        return await _apiClient.post(
           '/auth/signup',
           body: {
             'username': username,
@@ -79,12 +78,9 @@ class AuthApi {
             'confirmPassword': confirmPassword,
           },
         );
-        return response;
       } else {
-        // Use direct HTTP call when called from interceptor
-        const String baseUrl = 'https://front-mission.bigs.or.kr';
-        final url = Uri.parse('$baseUrl/auth/signup');
-        final response = await _httpClient.post(
+        final url = Uri.parse('${Env.dreamServer}/auth/signup');
+        return await _httpClient.post(
           url,
           headers: {
             'Content-Type': 'application/json',
@@ -97,32 +93,24 @@ class AuthApi {
             'confirmPassword': confirmPassword,
           }),
         );
-        return response;
       }
     } catch (e) {
       rethrow;
     }
   }
 
+  /// 토큰 갱신
   Future<bool> refreshToken(String refreshToken) async {
     try {
-      debugPrint(
-        '🔄 AuthApi.refreshToken called with token: ${refreshToken.substring(0, 20)}...',
-      );
       final http.Response response;
 
       if (_apiClient != null) {
-        // Use ApiClient when available (normal flow)
-        debugPrint('🔄 Using ApiClient for refresh token request');
         response = await _apiClient.post(
           '/auth/refresh',
           body: {'refreshToken': refreshToken},
         );
       } else {
-        // Use direct HTTP call when called from interceptor
-        debugPrint('🔄 Using direct HTTP call for refresh token request');
-        const String baseUrl = 'https://front-mission.bigs.or.kr';
-        final url = Uri.parse('$baseUrl/auth/refresh');
+        final url = Uri.parse('${Env.dreamServer}/auth/refresh');
         response = await _httpClient.post(
           url,
           headers: {
@@ -133,27 +121,20 @@ class AuthApi {
         );
       }
 
-      debugPrint('🔄 Refresh token response: ${response.statusCode}');
-      debugPrint('🔄 Refresh token body: ${response.body}');
-
       if (response.statusCode == 200) {
-        debugPrint('✅ Refresh token successful, saving new tokens');
         return await _secureStorage.handleTokenResponse(
           response.body,
           response.statusCode,
         );
       } else {
-        debugPrint(
-          '❌ Refresh token failed with status: ${response.statusCode}',
-        );
-        throw Exception('Failed to refresh token: ${response.statusCode}');
+        throw Exception('토큰 갱신에 실패했습니다: ${response.statusCode}');
       }
     } catch (e) {
-      debugPrint('❌ Exception in refreshToken: $e');
       rethrow;
     }
   }
 
+  /// HTTP 클라이언트 종료
   void dispose() {
     _apiClient?.dispose();
     _httpClient.close();

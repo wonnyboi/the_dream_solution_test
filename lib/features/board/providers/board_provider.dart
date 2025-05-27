@@ -1,5 +1,4 @@
 import 'dart:typed_data';
-import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:the_dream_solution/features/board/api/board_api.dart';
 import 'package:the_dream_solution/features/board/model/board_model.dart';
@@ -10,6 +9,7 @@ final boardProvider = StateNotifierProvider<BoardNotifier, BoardState>((ref) {
   return BoardNotifier(ref.read(boardApiProvider));
 });
 
+/// 게시판 상태
 class BoardState {
   final List<Board> boards;
   final Map<String, String> categories;
@@ -81,10 +81,10 @@ class BoardState {
     );
   }
 
+  /// 필터링 및 정렬된 게시판 목록
   List<Board> get filteredAndSortedBoards {
     var filteredBoards = boards;
 
-    // Apply category filter
     if (selectedCategory != 'ALL') {
       filteredBoards =
           filteredBoards
@@ -92,7 +92,6 @@ class BoardState {
               .toList();
     }
 
-    // Apply sorting
     filteredBoards.sort((a, b) {
       if (sortBy == 'createdAt') {
         return sortAscending
@@ -108,6 +107,7 @@ class BoardState {
     return filteredBoards;
   }
 
+  /// 필터링된 총 게시판 수
   int get totalFilteredElements {
     if (selectedCategory == 'ALL') {
       return totalElements;
@@ -116,12 +116,13 @@ class BoardState {
   }
 }
 
+/// 게시판 상태 관리
 class BoardNotifier extends StateNotifier<BoardState> {
   final BoardApi _boardApi;
 
   BoardNotifier(this._boardApi) : super(const BoardState());
 
-  // 보드 목록 페이지네이션 - throws exception on error
+  /// 게시판 목록 조회
   Future<void> loadBoards({
     int? page,
     int? size,
@@ -153,55 +154,52 @@ class BoardNotifier extends StateNotifier<BoardState> {
       );
     } catch (e) {
       state = state.copyWith(isLoading: false);
-      rethrow; // Let the UI handle the error locally
+      rethrow;
     }
   }
 
-  // Change category
+  /// 카테고리 변경
   void changeCategory(String category) {
     state = state.copyWith(selectedCategory: category, currentPage: 0);
   }
 
-  // Change sort
+  /// 정렬 변경
   void changeSort(String sortBy, bool ascending) {
     state = state.copyWith(sortBy: sortBy, sortAscending: ascending);
   }
 
-  // Change page
+  /// 페이지 변경
   Future<void> changePage(int page) async {
     await loadBoards(page: page);
   }
 
-  // 보드 추가 로딩
+  /// 추가 게시판 로드
   Future<void> loadMoreBoards() async {
     if (state.hasMoreData && !state.isLoading) {
       await loadBoards(page: state.currentPage + 1);
     }
   }
 
-  // 보드 상세페이지 - throws exception on error
+  /// 게시판 상세 조회
   Future<void> loadBoardDetail(int id) async {
-    debugPrint('🔍 BoardNotifier.loadBoardDetail called for ID: $id');
     state = state.copyWith(isLoadingDetail: true);
 
     try {
       final response = await _boardApi.getBoardDetail(id);
-      debugPrint('✅ BoardNotifier: Board detail loaded successfully');
       state = state.copyWith(selectedBoard: response, isLoadingDetail: false);
     } catch (e) {
-      debugPrint('❌ BoardNotifier: Error loading board detail: $e');
       state = state.copyWith(isLoadingDetail: false);
-      rethrow; // Let the UI handle the error locally
+      rethrow;
     }
   }
 
-  // 카테고리 - throws exception on error
+  /// 카테고리 목록 조회
   Future<void> loadCategories() async {
     final categories = await _boardApi.getBoardCategories();
     state = state.copyWith(categories: categories);
   }
 
-  // 보드 생성 - returns null on error
+  /// 게시판 생성
   Future<int?> createBoard({
     required BoardRequest request,
     String? imagePath,
@@ -215,18 +213,16 @@ class BoardNotifier extends StateNotifier<BoardState> {
       );
 
       state = state.copyWith(isCreating: false);
-
-      // 생성 후 보드 리스트 새로고침
       await loadBoards(isRefresh: true);
 
       return createdBoardId;
     } catch (e) {
       state = state.copyWith(isCreating: false);
-      rethrow; // Let the UI handle the error locally
+      rethrow;
     }
   }
 
-  // 보드 수정 - throws exception on error
+  /// 게시판 수정
   Future<void> updateBoard({
     required int id,
     required BoardRequest request,
@@ -244,44 +240,39 @@ class BoardNotifier extends StateNotifier<BoardState> {
       );
 
       state = state.copyWith(isUpdating: false);
-
-      // Refresh boards list and detail after update
       await loadBoards(isRefresh: true);
       await loadBoardDetail(id);
     } catch (e) {
       state = state.copyWith(isUpdating: false);
-      rethrow; // Let the UI handle the error locally
+      rethrow;
     }
   }
 
-  // 보드 삭제 - throws exception on error
+  /// 게시판 삭제
   Future<void> deleteBoard(int id) async {
     state = state.copyWith(isDeleting: true);
 
     try {
       await _boardApi.deleteBoard(id);
-
-      state = state.copyWith(isDeleting: false, selectedBoard: null);
-
-      // Refresh boards list after deletion
+      state = state.copyWith(isDeleting: false);
       await loadBoards(isRefresh: true);
     } catch (e) {
       state = state.copyWith(isDeleting: false);
-      rethrow; // Let the UI handle the error locally
+      rethrow;
     }
   }
 
-  // 선택된 보드 초기화
+  /// 선택된 게시판 초기화
   void clearSelectedBoard() {
     state = state.copyWith(selectedBoard: null);
   }
 
-  // 보드 상세 상태 완전 초기화 (새로운 상세 페이지 진입 시 사용)
+  /// 게시판 상세 상태 초기화
   void resetDetailState() {
     state = state.copyWith(selectedBoard: null, isLoadingDetail: false);
   }
 
-  // 모든 데이터 새로고침
+  /// 모든 데이터 새로고침
   Future<void> refresh() async {
     await Future.wait([loadBoards(isRefresh: true), loadCategories()]);
   }

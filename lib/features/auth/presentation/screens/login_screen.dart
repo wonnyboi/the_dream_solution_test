@@ -1,12 +1,13 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import '../providers/auth_provider.dart';
+import '../../providers/auth_provider.dart';
 import '../../util/auth_ui_helper.dart';
 import 'signup_screen.dart';
 import 'package:the_dream_solution/features/auth/util/auth_validator.dart';
 import 'package:the_dream_solution/features/main/presentation/screens/main_screen.dart';
 import 'package:go_router/go_router.dart';
+import 'package:the_dream_solution/core/storage/secure_storage.dart';
 
 class LoginScreen extends ConsumerStatefulWidget {
   const LoginScreen({super.key});
@@ -18,11 +19,42 @@ class LoginScreen extends ConsumerStatefulWidget {
 class _LoginScreenState extends ConsumerState<LoginScreen> {
   final TextEditingController _emailController = TextEditingController();
   final TextEditingController _passwordController = TextEditingController();
+  final SecureStorage _secureStorage = SecureStorage();
 
   String? _emailError;
   String? _passwordError;
   String? _submitError;
   bool _isLoading = false;
+  bool _saveEmail = false;
+  bool _autoLogin = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadSavedPreferences();
+  }
+
+  Future<void> _loadSavedPreferences() async {
+    final savedEmail = await _secureStorage.getSavedEmail();
+    final isAutoLoginEnabled = await _secureStorage.isAutoLoginEnabled();
+
+    if (savedEmail != null) {
+      setState(() {
+        _emailController.text = savedEmail;
+        _saveEmail = true;
+      });
+    }
+
+    if (isAutoLoginEnabled) {
+      setState(() {
+        _autoLogin = true;
+      });
+      // If auto login is enabled, attempt to login automatically
+      if (savedEmail != null) {
+        _submit();
+      }
+    }
+  }
 
   @override
   void dispose() {
@@ -60,11 +92,22 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
     try {
       debugPrint('🔐 Starting login attempt for: $email');
       final controller = ref.read(authProvider.notifier);
-      final success = await controller.loginWithCredentials(email, password);
+      final success = await controller.loginWithCredentials(
+        username: email,
+        password: password,
+      );
 
       debugPrint('🔐 Login result: $success');
 
       if (success) {
+        // Save preferences if checked
+        if (_saveEmail) {
+          await _secureStorage.saveEmailForAutoLogin(email);
+        } else {
+          await _secureStorage.saveEmailForAutoLogin('');
+        }
+        await _secureStorage.setAutoLogin(_autoLogin);
+
         debugPrint('✅ Login successful, navigating to main');
         if (context.mounted) {
           context.go('/main');
@@ -153,6 +196,75 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                         ),
                       ),
                       const SizedBox(height: 24),
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.start,
+                        children: [
+                          SizedBox(
+                            height: 24,
+                            child: Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                SizedBox(
+                                  height: 24,
+                                  width: 24,
+                                  child: Checkbox(
+                                    visualDensity: VisualDensity.compact,
+                                    materialTapTargetSize:
+                                        MaterialTapTargetSize.shrinkWrap,
+                                    value: _saveEmail,
+                                    onChanged: (value) {
+                                      setState(() {
+                                        _saveEmail = value ?? false;
+                                        if (!_saveEmail) {
+                                          _autoLogin = false;
+                                        }
+                                      });
+                                    },
+                                  ),
+                                ),
+                                const SizedBox(width: 4),
+                                const Text(
+                                  'ID 저장',
+                                  style: TextStyle(fontSize: 13),
+                                ),
+                              ],
+                            ),
+                          ),
+                          const SizedBox(width: 16),
+                          SizedBox(
+                            height: 24,
+                            child: Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                SizedBox(
+                                  height: 24,
+                                  width: 24,
+                                  child: Checkbox(
+                                    visualDensity: VisualDensity.compact,
+                                    materialTapTargetSize:
+                                        MaterialTapTargetSize.shrinkWrap,
+                                    value: _autoLogin,
+                                    onChanged: (value) {
+                                      setState(() {
+                                        _autoLogin = value ?? false;
+                                        if (_autoLogin) {
+                                          _saveEmail = true;
+                                        }
+                                      });
+                                    },
+                                  ),
+                                ),
+                                const SizedBox(width: 4),
+                                const Text(
+                                  '자동 로그인',
+                                  style: TextStyle(fontSize: 13),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 16),
                       const Text(
                         '비밀번호',
                         style: TextStyle(fontWeight: FontWeight.w500),
@@ -173,7 +285,8 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                         ),
                         obscureText: true,
                       ),
-                      const SizedBox(height: 24),
+                      const SizedBox(height: 16),
+
                       Row(
                         children: [
                           const Spacer(),

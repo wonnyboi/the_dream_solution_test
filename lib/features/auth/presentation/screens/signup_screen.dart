@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import '../providers/auth_provider.dart';
-import '../../util/auth_ui_helper.dart';
+import '../../providers/auth_provider.dart';
 import 'package:the_dream_solution/features/auth/util/auth_validator.dart';
 import 'package:go_router/go_router.dart';
 
@@ -14,11 +13,13 @@ class SignupScreen extends ConsumerStatefulWidget {
 
 class _SignupScreenState extends ConsumerState<SignupScreen> {
   final TextEditingController _emailController = TextEditingController();
+  final TextEditingController _nameController = TextEditingController();
   final TextEditingController _passwordController = TextEditingController();
   final TextEditingController _confirmPasswordController =
       TextEditingController();
 
   String? _emailError;
+  String? _nameError;
   String? _passwordError;
   String? _confirmPasswordError;
   String? _submitError;
@@ -27,6 +28,7 @@ class _SignupScreenState extends ConsumerState<SignupScreen> {
   @override
   void dispose() {
     _emailController.dispose();
+    _nameController.dispose();
     _passwordController.dispose();
     _confirmPasswordController.dispose();
     super.dispose();
@@ -35,6 +37,12 @@ class _SignupScreenState extends ConsumerState<SignupScreen> {
   void _validateEmail(String value) {
     setState(() {
       _emailError = AuthValidator.validateEmail(value.trim());
+    });
+  }
+
+  void _validateName(String value) {
+    setState(() {
+      _nameError = AuthValidator.validateName(value.trim());
     });
   }
 
@@ -55,10 +63,13 @@ class _SignupScreenState extends ConsumerState<SignupScreen> {
 
   Future<void> _submit() async {
     final email = _emailController.text.trim();
+    final name = _nameController.text.trim();
     final password = _passwordController.text.trim();
     final confirmPassword = _confirmPasswordController.text.trim();
+
     setState(() {
       _emailError = AuthValidator.validateEmail(email);
+      _nameError = AuthValidator.validateName(name);
       _passwordError = AuthValidator.validatePassword(password);
       _confirmPasswordError = AuthValidator.validateConfirmPassword(
         confirmPassword,
@@ -66,18 +77,22 @@ class _SignupScreenState extends ConsumerState<SignupScreen> {
       );
       _submitError = null;
     });
+
     if (_emailError != null ||
+        _nameError != null ||
         _passwordError != null ||
-        _confirmPasswordError != null)
+        _confirmPasswordError != null) {
       return;
+    }
     setState(() {
       _isLoading = true;
     });
     final controller = ref.read(authProvider.notifier);
     final success = await controller.signupWithCredentials(
-      email,
-      password,
-      confirmPassword,
+      username: email,
+      name: name,
+      password: password,
+      confirmPassword: confirmPassword,
     );
     setState(() {
       _isLoading = false;
@@ -151,6 +166,26 @@ class _SignupScreenState extends ConsumerState<SignupScreen> {
                             borderSide: BorderSide.none,
                           ),
                           errorText: _emailError,
+                        ),
+                      ),
+                      const SizedBox(height: 24),
+                      const Text(
+                        '닉네임',
+                        style: TextStyle(fontWeight: FontWeight.w500),
+                      ),
+                      const SizedBox(height: 8),
+                      TextFormField(
+                        controller: _nameController,
+                        onChanged: _validateName,
+                        decoration: InputDecoration(
+                          hintText: '닉네임을 입력해주세요',
+                          filled: true,
+                          fillColor: const Color(0xFFF1F5F9),
+                          border: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(8),
+                            borderSide: BorderSide.none,
+                          ),
+                          errorText: _nameError,
                         ),
                       ),
                       const SizedBox(height: 24),

@@ -57,7 +57,7 @@ final goRouter = GoRouter(
   ],
 );
 
-// Initialize NavigationService with the router
+// Token 유무에 따른 /main screen 자동 이동.
 void initializeNavigation() {
   NavigationService.setGoRouter(goRouter);
 }

@@ -7,6 +7,8 @@ import 'package:the_dream_solution/core/storage/secure_storage.dart';
 import 'request_executor.dart';
 import 'auth_interceptor.dart';
 
+// API 클라이언트 클래스
+// HTTP 요청 처리 및 인증 인터셉터를 통해 요청 가로채기.
 class ApiClient {
   static const String baseUrl = Env.dreamServer;
   final http.Client _client;
@@ -16,8 +18,8 @@ class ApiClient {
     : _client = client ?? http.Client(),
       _authInterceptor = AuthInterceptor(secureStorage ?? SecureStorage());
 
+  // GET 요청 수행.
   Future<http.Response> get(String endpoint) async {
-    debugPrint('🚀 GET Request to: $baseUrl$endpoint');
     final url = '$baseUrl$endpoint';
 
     return _authInterceptor.interceptRequest(
@@ -35,14 +37,11 @@ class ApiClient {
     );
   }
 
+  // POST 요청 수행.
   Future<http.Response> post(
     String endpoint, {
     Map<String, dynamic>? body,
   }) async {
-    debugPrint('🚀 POST Request to: $baseUrl$endpoint');
-    if (body != null) {
-      debugPrint('📦 POST Body: ${jsonEncode(body)}');
-    }
     final url = '$baseUrl$endpoint';
 
     return _authInterceptor.interceptRequest(
@@ -52,32 +51,24 @@ class ApiClient {
           'Accept': 'application/json',
         });
 
-        final response = await _client
+        return await _client
             .post(
               Uri.parse(url),
               headers: headers,
               body: body != null ? jsonEncode(body) : null,
             )
             .timeout(RequestExecutor.timeoutDuration);
-
-        debugPrint(
-          '📨 POST Response: ${response.statusCode} - ${response.body}',
-        );
-        return response;
       },
       url,
       {'Content-Type': 'application/json', 'Accept': 'application/json'},
     );
   }
 
+  // PATCH 요청 수행.
   Future<http.Response> patch(
     String endpoint, {
     Map<String, dynamic>? body,
   }) async {
-    debugPrint('🚀 PATCH Request to: $baseUrl$endpoint');
-    if (body != null) {
-      debugPrint('📦 PATCH Body: ${jsonEncode(body)}');
-    }
     final url = '$baseUrl$endpoint';
 
     return _authInterceptor.interceptRequest(
@@ -87,24 +78,20 @@ class ApiClient {
           'Accept': 'application/json',
         });
 
-        final response = await _client
+        return await _client
             .patch(
               Uri.parse(url),
               headers: headers,
               body: body != null ? jsonEncode(body) : null,
             )
             .timeout(RequestExecutor.timeoutDuration);
-
-        debugPrint(
-          '📨 PATCH Response: ${response.statusCode} - ${response.body}',
-        );
-        return response;
       },
       url,
       {'Content-Type': 'application/json', 'Accept': 'application/json'},
     );
   }
 
+  // 멀티파트 PATCH 요청 수행.
   Future<http.Response> patchMultipart(
     String endpoint, {
     Map<String, String>? fields,
@@ -119,6 +106,7 @@ class ApiClient {
     );
   }
 
+  // 멀티파트 POST 요청 수행.
   Future<http.Response> postMultipart(
     String endpoint, {
     Map<String, String>? fields,
@@ -133,14 +121,11 @@ class ApiClient {
     );
   }
 
+  // DELETE 요청 수행.
   Future<http.Response> delete(
     String endpoint, {
     Map<String, dynamic>? body,
   }) async {
-    debugPrint('🚀 DELETE Request to: $baseUrl$endpoint');
-    if (body != null) {
-      debugPrint('📦 DELETE Body: ${jsonEncode(body)}');
-    }
     final url = '$baseUrl$endpoint';
 
     return _authInterceptor.interceptRequest(
@@ -163,6 +148,7 @@ class ApiClient {
     );
   }
 
+  // HTTP 클라이언트 종료.
   void dispose() {
     _client.close();
   }

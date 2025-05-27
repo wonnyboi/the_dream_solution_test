@@ -19,7 +19,7 @@ class AuthValidator {
     'yahoo.com': 8,
   };
 
-  /// Validates email format
+  // Validates email format
   static String? validateEmail(String? email) {
     if (email == null || email.isEmpty) {
       return '이메일을 입력해주세요';
@@ -30,7 +30,18 @@ class AuthValidator {
     return null;
   }
 
-  /// Validates password complexity
+  // Validates name format
+  static String? validateName(String? name) {
+    if (name == null || name.isEmpty) {
+      return '이름을 입력해주세요';
+    }
+    if (name.length < 2 || name.length > 10) {
+      return '이름은 2~10자로 입력해주세요';
+    }
+    return null;
+  }
+
+  // Validates password complexity
   static String? validatePassword(String? password) {
     if (password == null || password.isEmpty) {
       return '비밀번호를 입력해주세요';
@@ -41,7 +52,7 @@ class AuthValidator {
     return null;
   }
 
-  /// Validates password confirmation
+  // Validates password confirmation
   static String? validateConfirmPassword(
     String? confirmPassword,
     String password,
@@ -53,18 +64,5 @@ class AuthValidator {
       return '비밀번호가 일치하지 않습니다';
     }
     return null;
-  }
-
-  static String generateNickname(String email) {
-    final parts = email.split('@');
-    if (parts.length != 2) return email;
-
-    final username = parts[0];
-    final domain = parts[1].toLowerCase();
-
-    final domainNumber =
-        domainNumbers[domain] ?? (domain.hashCode % 1000).abs();
-
-    return '$username$domainNumber';
   }
 }

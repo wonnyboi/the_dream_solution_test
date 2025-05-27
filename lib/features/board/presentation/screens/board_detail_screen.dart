@@ -21,19 +21,13 @@ class _BoardDetailScreenState extends ConsumerState<BoardDetailScreen> {
   @override
   void initState() {
     super.initState();
-    // Load board detail when screen initializes
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _loadBoardDetail();
     });
   }
 
   Future<void> _loadBoardDetail() async {
-    debugPrint(
-      '🔍 BoardDetailScreen: Loading board detail for ID: ${widget.boardId}',
-    );
-
     final boardNotifier = ref.read(boardProvider.notifier);
-    // Reset all detail state before loading new detail
     boardNotifier.resetDetailState();
 
     try {
@@ -55,92 +49,90 @@ class _BoardDetailScreenState extends ConsumerState<BoardDetailScreen> {
     final boardState = ref.watch(boardProvider);
     final boardNotifier = ref.read(boardProvider.notifier);
 
-    debugPrint(
-      '🔍 BoardDetailScreen build: isLoadingDetail=${boardState.isLoadingDetail}, localError=$_errorMessage, selectedBoard=${boardState.selectedBoard?.id}',
-    );
-
     return Scaffold(
       backgroundColor: const Color(0xFFF1F5F9),
-      appBar: AppBar(
-        backgroundColor: const Color(0xFFF1F5F9),
-        title: const Text('게시글 상세'),
-        leading: IconButton(
-          icon: const Icon(Icons.arrow_back),
-          onPressed: () => context.pop(),
-        ),
-        actions: [
-          if (boardState.selectedBoard != null) ...[
-            IconButton(
-              icon: const Icon(Icons.edit),
-              onPressed: () {
-                context.push('/board/${widget.boardId}/edit');
-              },
-            ),
-            IconButton(
-              icon: const Icon(Icons.delete),
-              onPressed: () => _showDeleteConfirmation(context, boardNotifier),
-            ),
-          ],
-        ],
+      appBar: _buildAppBar(boardState, boardNotifier),
+      body: _buildBody(boardState),
+    );
+  }
+
+  AppBar _buildAppBar(BoardState boardState, BoardNotifier boardNotifier) {
+    return AppBar(
+      backgroundColor: const Color(0xFFF1F5F9),
+      title: const Text('게시글 상세'),
+      leading: IconButton(
+        icon: const Icon(Icons.arrow_back),
+        onPressed: () => context.pop(),
       ),
-      body: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 16),
-        child: Container(
-          padding: const EdgeInsets.all(8.0),
-          decoration: const BoxDecoration(
-            color: Colors.white,
-            borderRadius: BorderRadius.all(Radius.circular(20)),
+      actions: [
+        if (boardState.selectedBoard != null) ...[
+          IconButton(
+            icon: const Icon(Icons.edit),
+            onPressed: () {
+              context.push('/board/${widget.boardId}/edit');
+            },
           ),
-          child: _buildBody(boardState, boardNotifier),
+          IconButton(
+            icon: const Icon(Icons.delete),
+            onPressed: () => _showDeleteConfirmation(context, boardNotifier),
+          ),
+        ],
+      ],
+    );
+  }
+
+  Widget _buildBody(BoardState boardState) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 16),
+      child: Container(
+        padding: const EdgeInsets.all(8.0),
+        decoration: const BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.all(Radius.circular(20)),
         ),
+        child: _buildContent(boardState),
       ),
     );
   }
 
-  Widget _buildBody(BoardState boardState, BoardNotifier boardNotifier) {
-    // Priority 1: Show loading state
+  Widget _buildContent(BoardState boardState) {
     if (boardState.isLoadingDetail) {
       return const Center(child: CircularProgressIndicator());
     }
 
-    // Priority 2: Show content if available
     if (boardState.selectedBoard != null) {
-      debugPrint(
-        '🔍 BoardDetailScreen: Showing board data (ID: ${boardState.selectedBoard!.id})',
-      );
       return _buildBoardContent(boardState.selectedBoard!);
     }
 
-    // Priority 3: Show error only if no content is available
     if (_errorMessage != null) {
-      return Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Icon(Icons.error_outline, size: 64, color: Colors.red.shade400),
-            const SizedBox(height: 16),
-            Text(
-              '오류가 발생했습니다',
-              style: Theme.of(context).textTheme.headlineSmall,
-            ),
-            const SizedBox(height: 8),
-            Text(
-              _errorMessage!,
-              style: Theme.of(context).textTheme.bodyMedium,
-              textAlign: TextAlign.center,
-            ),
-            const SizedBox(height: 24),
-            ElevatedButton(
-              onPressed: _loadBoardDetail,
-              child: const Text('다시 시도'),
-            ),
-          ],
-        ),
-      );
+      return _buildErrorContent();
     }
 
-    // Priority 4: Default state
     return const Center(child: Text('게시글을 찾을 수 없습니다.'));
+  }
+
+  Widget _buildErrorContent() {
+    return Center(
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Icon(Icons.error_outline, size: 64, color: Colors.red.shade400),
+          const SizedBox(height: 16),
+          Text('오류가 발생했습니다', style: Theme.of(context).textTheme.headlineSmall),
+          const SizedBox(height: 8),
+          Text(
+            _errorMessage!,
+            style: Theme.of(context).textTheme.bodyMedium,
+            textAlign: TextAlign.center,
+          ),
+          const SizedBox(height: 24),
+          ElevatedButton(
+            onPressed: _loadBoardDetail,
+            child: const Text('다시 시도'),
+          ),
+        ],
+      ),
+    );
   }
 
   Widget _buildBoardContent(BoardDetailResponse board) {
@@ -149,78 +141,84 @@ class _BoardDetailScreenState extends ConsumerState<BoardDetailScreen> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(
-            board.title,
-            style: Theme.of(
-              context,
-            ).textTheme.headlineSmall?.copyWith(fontWeight: FontWeight.bold),
-          ),
+          _buildTitle(board),
           const SizedBox(height: 8),
-
-          Row(
-            children: [
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                decoration: BoxDecoration(
-                  color: Colors.blue.shade100,
-                  borderRadius: BorderRadius.circular(4),
-                ),
-                child: Text(
-                  board.boardCategory,
-                  style: TextStyle(
-                    color: Colors.blue.shade700,
-                    fontSize: 12,
-                    fontWeight: FontWeight.w500,
-                  ),
-                ),
-              ),
-              const SizedBox(width: 8),
-              Text(
-                _formatDate(board.createdAt),
-                style: Theme.of(
-                  context,
-                ).textTheme.bodySmall?.copyWith(color: Colors.grey.shade600),
-              ),
-            ],
-          ),
+          _buildMetaInfo(board),
           const SizedBox(height: 12),
-
-          // Image if available
-          if (board.imageUrl != null && board.imageUrl!.isNotEmpty) ...[
-            ClipRRect(
-              borderRadius: BorderRadius.circular(8),
-              child: Image.network(
-                '${Env.dreamServer}${board.imageUrl!}',
-                width: double.infinity,
-                fit: BoxFit.cover,
-                errorBuilder: (context, error, stackTrace) {
-                  return Container(
-                    height: 200,
-                    decoration: BoxDecoration(
-                      color: Colors.grey.shade200,
-                      borderRadius: BorderRadius.circular(8),
-                    ),
-                    child: const Center(
-                      child: Icon(
-                        Icons.broken_image,
-                        size: 48,
-                        color: Colors.grey,
-                      ),
-                    ),
-                  );
-                },
-              ),
-            ),
-          ],
+          if (board.imageUrl != null && board.imageUrl!.isNotEmpty)
+            _buildImage(board),
           const SizedBox(height: 12),
           const Divider(color: Colors.grey),
           const SizedBox(height: 12),
-
-          // Content
-          Text(board.content, style: Theme.of(context).textTheme.bodyLarge),
+          _buildBoardText(board),
         ],
       ),
     );
+  }
+
+  Widget _buildTitle(BoardDetailResponse board) {
+    return Text(
+      board.title,
+      style: Theme.of(
+        context,
+      ).textTheme.headlineSmall?.copyWith(fontWeight: FontWeight.bold),
+    );
+  }
+
+  Widget _buildMetaInfo(BoardDetailResponse board) {
+    return Row(
+      children: [
+        Container(
+          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+          decoration: BoxDecoration(
+            color: Colors.blue.shade100,
+            borderRadius: BorderRadius.circular(4),
+          ),
+          child: Text(
+            board.boardCategory,
+            style: TextStyle(
+              color: Colors.blue.shade700,
+              fontSize: 12,
+              fontWeight: FontWeight.w500,
+            ),
+          ),
+        ),
+        const SizedBox(width: 8),
+        Text(
+          _formatDate(board.createdAt),
+          style: Theme.of(
+            context,
+          ).textTheme.bodySmall?.copyWith(color: Colors.grey.shade600),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildImage(BoardDetailResponse board) {
+    return ClipRRect(
+      borderRadius: BorderRadius.circular(8),
+      child: Image.network(
+        '${Env.dreamServer}${board.imageUrl!}',
+        width: double.infinity,
+        fit: BoxFit.cover,
+        errorBuilder: (context, error, stackTrace) {
+          return Container(
+            height: 200,
+            decoration: BoxDecoration(
+              color: Colors.grey.shade200,
+              borderRadius: BorderRadius.circular(8),
+            ),
+            child: const Center(
+              child: Icon(Icons.broken_image, size: 48, color: Colors.grey),
+            ),
+          );
+        },
+      ),
+    );
+  }
+
+  Widget _buildBoardText(BoardDetailResponse board) {
+    return Text(board.content, style: Theme.of(context).textTheme.bodyLarge);
   }
 
   String _formatDate(DateTime date) {
@@ -246,10 +244,7 @@ class _BoardDetailScreenState extends ConsumerState<BoardDetailScreen> {
             ),
             ElevatedButton(
               onPressed: () => Navigator.of(context).pop(true),
-              style: ElevatedButton.styleFrom(
-                backgroundColor: Colors.red,
-                foregroundColor: Colors.white,
-              ),
+              style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
               child: const Text('삭제'),
             ),
           ],
@@ -257,23 +252,17 @@ class _BoardDetailScreenState extends ConsumerState<BoardDetailScreen> {
       },
     );
 
-    if (shouldDelete == true && mounted) {
+    if (shouldDelete == true) {
       try {
         await boardNotifier.deleteBoard(widget.boardId);
         if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
-              content: Text('게시글이 삭제되었습니다.'),
-              backgroundColor: Colors.green,
-            ),
-          );
-          context.pop(); // Go back to previous screen
+          context.pop();
         }
       } catch (e) {
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
-              content: Text('삭제 중 오류가 발생했습니다: $e'),
+              content: Text('게시글 삭제 실패: ${e.toString()}'),
               backgroundColor: Colors.red,
             ),
           );
