@@ -23,6 +23,9 @@ class BoardState {
   final int pageSize;
   final bool hasMoreData;
   final int totalElements;
+  final String selectedCategory;
+  final String sortBy;
+  final bool sortAscending;
 
   const BoardState({
     this.boards = const [],
@@ -37,6 +40,9 @@ class BoardState {
     this.pageSize = 10,
     this.hasMoreData = false,
     this.totalElements = 0,
+    this.selectedCategory = 'ALL',
+    this.sortBy = 'createdAt',
+    this.sortAscending = false,
   });
 
   BoardState copyWith({
@@ -52,6 +58,9 @@ class BoardState {
     int? pageSize,
     bool? hasMoreData,
     int? totalElements,
+    String? selectedCategory,
+    String? sortBy,
+    bool? sortAscending,
   }) {
     return BoardState(
       boards: boards ?? this.boards,
@@ -66,7 +75,44 @@ class BoardState {
       pageSize: pageSize ?? this.pageSize,
       hasMoreData: hasMoreData ?? this.hasMoreData,
       totalElements: totalElements ?? this.totalElements,
+      selectedCategory: selectedCategory ?? this.selectedCategory,
+      sortBy: sortBy ?? this.sortBy,
+      sortAscending: sortAscending ?? this.sortAscending,
     );
+  }
+
+  List<Board> get filteredAndSortedBoards {
+    var filteredBoards = boards;
+
+    // Apply category filter
+    if (selectedCategory != 'ALL') {
+      filteredBoards =
+          filteredBoards
+              .where((board) => board.category == selectedCategory)
+              .toList();
+    }
+
+    // Apply sorting
+    filteredBoards.sort((a, b) {
+      if (sortBy == 'createdAt') {
+        return sortAscending
+            ? a.createdAt.compareTo(b.createdAt)
+            : b.createdAt.compareTo(a.createdAt);
+      } else {
+        return sortAscending
+            ? a.category.compareTo(b.category)
+            : b.category.compareTo(a.category);
+      }
+    });
+
+    return filteredBoards;
+  }
+
+  int get totalFilteredElements {
+    if (selectedCategory == 'ALL') {
+      return totalElements;
+    }
+    return boards.where((board) => board.category == selectedCategory).length;
   }
 }
 
@@ -109,6 +155,21 @@ class BoardNotifier extends StateNotifier<BoardState> {
       state = state.copyWith(isLoading: false);
       rethrow; // Let the UI handle the error locally
     }
+  }
+
+  // Change category
+  void changeCategory(String category) {
+    state = state.copyWith(selectedCategory: category, currentPage: 0);
+  }
+
+  // Change sort
+  void changeSort(String sortBy, bool ascending) {
+    state = state.copyWith(sortBy: sortBy, sortAscending: ascending);
+  }
+
+  // Change page
+  void changePage(int page) {
+    state = state.copyWith(currentPage: page);
   }
 
   // 보드 추가 로딩
@@ -170,6 +231,7 @@ class BoardNotifier extends StateNotifier<BoardState> {
     required int id,
     required BoardRequest request,
     String? imagePath,
+    bool keepExistingImage = false,
   }) async {
     state = state.copyWith(isUpdating: true);
 
@@ -178,6 +240,7 @@ class BoardNotifier extends StateNotifier<BoardState> {
         id: id,
         request: request,
         imagePath: imagePath,
+        keepExistingImage: keepExistingImage,
       );
 
       state = state.copyWith(isUpdating: false);

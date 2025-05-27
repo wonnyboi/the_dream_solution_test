@@ -14,15 +14,14 @@ class BoardListScreen extends ConsumerStatefulWidget {
 class _BoardListScreenState extends ConsumerState<BoardListScreen>
     with SingleTickerProviderStateMixin {
   TabController? _tabController;
-  String _selectedCategory = 'ALL';
-  String _sortBy = 'createdAt'; // 'createdAt' or 'category'
-  bool _sortAscending = false;
 
   @override
   void initState() {
     super.initState();
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _initializeTabController();
+      // Load initial data
+      ref.read(boardProvider.notifier).loadBoards(isRefresh: true);
     });
   }
 
@@ -43,41 +42,26 @@ class _BoardListScreenState extends ConsumerState<BoardListScreen>
     });
   }
 
-  List<dynamic> _getSortedBoards(List<dynamic> boards) {
-    final sortedBoards = List<dynamic>.from(boards);
-
-    if (_selectedCategory != 'ALL') {
-      sortedBoards.removeWhere((board) => board.category != _selectedCategory);
-    }
-
-    sortedBoards.sort((a, b) {
-      if (_sortBy == 'createdAt') {
-        return _sortAscending
-            ? a.createdAt.compareTo(b.createdAt)
-            : b.createdAt.compareTo(a.createdAt);
-      } else {
-        return _sortAscending
-            ? a.category.compareTo(b.category)
-            : b.category.compareTo(a.category);
-      }
-    });
-
-    return sortedBoards;
-  }
-
   Widget _buildSortButton() {
+    final boardState = ref.watch(boardProvider);
+
     return PopupMenuButton<String>(
       icon: const Icon(Icons.sort),
       tooltip: '정렬',
       color: Colors.white,
       onSelected: (String value) {
-        setState(() {
-          if (value == 'createdAt' || value == 'category') {
-            _sortBy = value;
-          } else if (value == 'toggle') {
-            _sortAscending = !_sortAscending;
-          }
-        });
+        if (value == 'createdAt' || value == 'category') {
+          ref
+              .read(boardProvider.notifier)
+              .changeSort(
+                value,
+                boardState.sortBy == value ? !boardState.sortAscending : false,
+              );
+        } else if (value == 'toggle') {
+          ref
+              .read(boardProvider.notifier)
+              .changeSort(boardState.sortBy, !boardState.sortAscending);
+        }
       },
       itemBuilder:
           (BuildContext context) => [
@@ -88,7 +72,7 @@ class _BoardListScreenState extends ConsumerState<BoardListScreen>
                   const Icon(Icons.access_time),
                   const SizedBox(width: 8),
                   Text(
-                    '작성일 ${_sortBy == 'createdAt' ? (_sortAscending ? '↑' : '↓') : ''}',
+                    '작성일 ${boardState.sortBy == 'createdAt' ? (boardState.sortAscending ? '↑' : '↓') : ''}',
                   ),
                 ],
               ),
@@ -99,15 +83,93 @@ class _BoardListScreenState extends ConsumerState<BoardListScreen>
               child: Row(
                 children: [
                   Icon(
-                    _sortAscending ? Icons.arrow_downward : Icons.arrow_upward,
+                    boardState.sortAscending
+                        ? Icons.arrow_downward
+                        : Icons.arrow_upward,
                   ),
                   const SizedBox(width: 8),
-                  Text(_sortAscending ? '내림차순' : '오름차순'),
+                  Text(boardState.sortAscending ? '내림차순' : '오름차순'),
                 ],
               ),
             ),
           ],
     );
+  }
+
+  Widget _buildPagination(BoardState boardState) {
+    final totalPages =
+        (boardState.totalFilteredElements / boardState.pageSize).ceil();
+    final pages = <Widget>[];
+
+    // Previous page button
+    pages.add(
+      IconButton(
+        icon: const Icon(Icons.chevron_left),
+        onPressed:
+            boardState.currentPage > 0
+                ? () => ref
+                    .read(boardProvider.notifier)
+                    .changePage(boardState.currentPage - 1)
+                : null,
+      ),
+    );
+
+    // Page numbers
+    for (int i = 0; i < totalPages; i++) {
+      if (i == boardState.currentPage) {
+        // Current page
+        pages.add(
+          Container(
+            width: 40,
+            height: 40,
+            margin: const EdgeInsets.symmetric(horizontal: 4),
+            decoration: BoxDecoration(
+              color: Colors.blue,
+              borderRadius: BorderRadius.circular(20),
+            ),
+            child: Center(
+              child: Text(
+                '${i + 1}',
+                style: const TextStyle(
+                  color: Colors.white,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+            ),
+          ),
+        );
+      } else if (i == 0 ||
+          i == totalPages - 1 ||
+          (i >= boardState.currentPage - 1 &&
+              i <= boardState.currentPage + 1)) {
+        // First page, last page, or pages around current page
+        pages.add(
+          TextButton(
+            onPressed: () => ref.read(boardProvider.notifier).changePage(i),
+            child: Text('${i + 1}'),
+          ),
+        );
+      } else if (i == boardState.currentPage - 2 ||
+          i == boardState.currentPage + 2) {
+        // Ellipsis
+        pages.add(const Text('...'));
+      }
+    }
+
+    // Next page button
+    pages.add(
+      IconButton(
+        icon: const Icon(Icons.chevron_right),
+        onPressed:
+            boardState.currentPage < totalPages - 1
+                ? () => ref
+                    .read(boardProvider.notifier)
+                    .changePage(boardState.currentPage + 1)
+                : null,
+      ),
+    );
+
+    return Row(mainAxisAlignment: MainAxisAlignment.center, children: pages);
   }
 
   @override
@@ -146,31 +208,40 @@ class _BoardListScreenState extends ConsumerState<BoardListScreen>
             ...categories.entries.map((entry) => Tab(text: entry.value)),
           ],
           onTap: (index) {
-            setState(() {
-              _selectedCategory =
-                  index == 0 ? 'ALL' : categories.keys.elementAt(index - 1);
-            });
+            final category =
+                index == 0 ? 'ALL' : categories.keys.elementAt(index - 1);
+            ref.read(boardProvider.notifier).changeCategory(category);
           },
         ),
       ),
-      body: TabBarView(
-        controller: _tabController,
+      body: Column(
         children: [
-          _buildBoardList(boardState),
-          ...categories.keys.map((_) => _buildBoardList(boardState)),
+          Expanded(
+            child: TabBarView(
+              controller: _tabController,
+              children: [
+                _buildBoardList(boardState),
+                ...categories.keys.map((_) => _buildBoardList(boardState)),
+              ],
+            ),
+          ),
+          Padding(
+            padding: const EdgeInsets.symmetric(vertical: 16),
+            child: _buildPagination(boardState),
+          ),
         ],
       ),
     );
   }
 
   Widget _buildBoardList(BoardState boardState) {
-    final sortedBoards = _getSortedBoards(boardState.boards);
-
     if (boardState.isLoading && boardState.boards.isEmpty) {
       return const Center(child: CircularProgressIndicator());
     }
 
-    if (sortedBoards.isEmpty) {
+    final filteredBoards = boardState.filteredAndSortedBoards;
+
+    if (filteredBoards.isEmpty) {
       return const Center(
         child: Text(
           '게시글이 없습니다.',
@@ -181,9 +252,9 @@ class _BoardListScreenState extends ConsumerState<BoardListScreen>
 
     return ListView.builder(
       padding: const EdgeInsets.all(16),
-      itemCount: sortedBoards.length,
+      itemCount: filteredBoards.length,
       itemBuilder: (context, index) {
-        final board = sortedBoards[index];
+        final board = filteredBoards[index];
         return Card(
           margin: const EdgeInsets.only(bottom: 8),
           child: ListTile(

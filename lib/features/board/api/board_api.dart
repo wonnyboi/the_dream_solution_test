@@ -39,11 +39,20 @@ class BoardApi {
     return contentType;
   }
 
-  Future<BoardResponse> getBoardsList(int? page, int? size) async {
+  Future<BoardResponse> getBoardsList(
+    int? page,
+    int? size, {
+    String? category,
+  }) async {
     final pages = page ?? 0;
     final sizes = size ?? 10;
 
-    final response = await ApiClient().get('/boards?page=$pages&size=$sizes');
+    String endpoint = '/boards?page=$pages&size=$sizes';
+    if (category != null) {
+      endpoint += '&category=$category';
+    }
+
+    final response = await ApiClient().get(endpoint);
     if (response.statusCode == 200) {
       final String decodedBody = utf8.decode(response.bodyBytes);
       final Map<String, dynamic> jsonResponse = json.decode(decodedBody);
@@ -171,6 +180,7 @@ class BoardApi {
     required int id,
     required BoardRequest request,
     String? imagePath,
+    bool keepExistingImage = false,
   }) async {
     // Validate request
     if (!request.isValid()) {
@@ -180,7 +190,10 @@ class BoardApi {
     final http.Response response;
 
     // Always use multipart request as the server expects it
-    final Map<String, String> fields = {'request': request.toJsonString()};
+    final Map<String, String> fields = {
+      'request': request.toJsonString(),
+      'keepExistingImage': keepExistingImage.toString(),
+    };
 
     debugPrint('📝 Updating board $id with data: ${request.toJsonString()}');
 

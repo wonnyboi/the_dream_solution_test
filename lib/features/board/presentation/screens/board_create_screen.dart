@@ -5,6 +5,7 @@ import 'package:image_picker/image_picker.dart';
 import 'package:the_dream_solution/features/board/model/board_model.dart';
 import 'dart:io';
 import 'package:the_dream_solution/features/board/providers/board_provider.dart';
+import 'package:the_dream_solution/core/config/env.dart';
 
 class BoardCreateScreen extends ConsumerStatefulWidget {
   final int? boardId;
@@ -20,6 +21,7 @@ class _BoardCreateScreenState extends ConsumerState<BoardCreateScreen> {
   final _contentController = TextEditingController();
   String _selectedCategory = '';
   File? _selectedImage;
+  String? _existingImageUrl;
   final ImagePicker _imagePicker = ImagePicker();
 
   String? _titleError;
@@ -49,6 +51,9 @@ class _BoardCreateScreenState extends ConsumerState<BoardCreateScreen> {
           _titleController.text = board.title;
           _contentController.text = board.content;
           _selectedCategory = board.boardCategory;
+          if (board.imageUrl != null) {
+            _existingImageUrl = '${Env.dreamServer}${board.imageUrl}';
+          }
         });
       }
     } catch (e) {
@@ -170,6 +175,8 @@ class _BoardCreateScreenState extends ConsumerState<BoardCreateScreen> {
               id: widget.boardId!,
               request: boardRequest,
               imagePath: _selectedImage?.path,
+              keepExistingImage:
+                  _existingImageUrl != null && _selectedImage == null,
             );
 
         if (mounted) {
@@ -179,7 +186,7 @@ class _BoardCreateScreenState extends ConsumerState<BoardCreateScreen> {
               backgroundColor: Colors.green,
             ),
           );
-          context.pop();
+          context.pushReplacement('/board/${widget.boardId}');
         }
       } else {
         final createdBoardId = await ref
@@ -196,7 +203,7 @@ class _BoardCreateScreenState extends ConsumerState<BoardCreateScreen> {
               backgroundColor: Colors.green,
             ),
           );
-          context.push('/board/$createdBoardId');
+          context.pushReplacement('/board/$createdBoardId');
         }
       }
     } catch (e) {
@@ -347,6 +354,44 @@ class _BoardCreateScreenState extends ConsumerState<BoardCreateScreen> {
               Expanded(
                 child: OutlinedButton.icon(
                   onPressed: _removeImage,
+                  icon: const Icon(Icons.delete),
+                  label: const Text('이미지 제거'),
+                  style: OutlinedButton.styleFrom(foregroundColor: Colors.red),
+                ),
+              ),
+            ],
+          ),
+        ] else if (_existingImageUrl != null) ...[
+          Container(
+            width: double.infinity,
+            height: 200,
+            decoration: BoxDecoration(
+              borderRadius: BorderRadius.circular(8),
+              border: Border.all(color: Colors.grey.shade300),
+            ),
+            child: ClipRRect(
+              borderRadius: BorderRadius.circular(8),
+              child: Image.network(_existingImageUrl!, fit: BoxFit.cover),
+            ),
+          ),
+          const SizedBox(height: 8),
+          Row(
+            children: [
+              Expanded(
+                child: OutlinedButton.icon(
+                  onPressed: _pickImage,
+                  icon: const Icon(Icons.edit),
+                  label: const Text('이미지 변경'),
+                ),
+              ),
+              const SizedBox(width: 8),
+              Expanded(
+                child: OutlinedButton.icon(
+                  onPressed: () {
+                    setState(() {
+                      _existingImageUrl = null;
+                    });
+                  },
                   icon: const Icon(Icons.delete),
                   label: const Text('이미지 제거'),
                   style: OutlinedButton.styleFrom(foregroundColor: Colors.red),
