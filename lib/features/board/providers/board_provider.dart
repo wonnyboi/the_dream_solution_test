@@ -168,8 +168,8 @@ class BoardNotifier extends StateNotifier<BoardState> {
   }
 
   // Change page
-  void changePage(int page) {
-    state = state.copyWith(currentPage: page);
+  Future<void> changePage(int page) async {
+    await loadBoards(page: page);
   }
 
   // 보드 추가 로딩

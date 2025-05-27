@@ -106,10 +106,12 @@ class _BoardListScreenState extends ConsumerState<BoardListScreen>
       IconButton(
         icon: const Icon(Icons.chevron_left),
         onPressed:
-            boardState.currentPage > 0
-                ? () => ref
-                    .read(boardProvider.notifier)
-                    .changePage(boardState.currentPage - 1)
+            boardState.currentPage > 0 && !boardState.isLoading
+                ? () async {
+                  await ref
+                      .read(boardProvider.notifier)
+                      .changePage(boardState.currentPage - 1);
+                }
                 : null,
       ),
     );
@@ -145,7 +147,12 @@ class _BoardListScreenState extends ConsumerState<BoardListScreen>
         // First page, last page, or pages around current page
         pages.add(
           TextButton(
-            onPressed: () => ref.read(boardProvider.notifier).changePage(i),
+            onPressed:
+                !boardState.isLoading
+                    ? () async {
+                      await ref.read(boardProvider.notifier).changePage(i);
+                    }
+                    : null,
             child: Text('${i + 1}'),
           ),
         );
@@ -161,10 +168,12 @@ class _BoardListScreenState extends ConsumerState<BoardListScreen>
       IconButton(
         icon: const Icon(Icons.chevron_right),
         onPressed:
-            boardState.currentPage < totalPages - 1
-                ? () => ref
-                    .read(boardProvider.notifier)
-                    .changePage(boardState.currentPage + 1)
+            boardState.currentPage < totalPages - 1 && !boardState.isLoading
+                ? () async {
+                  await ref
+                      .read(boardProvider.notifier)
+                      .changePage(boardState.currentPage + 1);
+                }
                 : null,
       ),
     );
@@ -216,6 +225,17 @@ class _BoardListScreenState extends ConsumerState<BoardListScreen>
       ),
       body: Column(
         children: [
+          Padding(
+            padding: const EdgeInsets.fromLTRB(16, 8, 16, 0),
+            child: Row(
+              children: [
+                Text(
+                  '총 ${boardState.totalFilteredElements}개의 게시글',
+                  style: const TextStyle(fontSize: 12, color: Colors.grey),
+                ),
+              ],
+            ),
+          ),
           Expanded(
             child: TabBarView(
               controller: _tabController,
