@@ -123,7 +123,7 @@ class _MainScreenState extends ConsumerState<MainScreen> {
                     icon: const Icon(Icons.refresh),
                   ),
                   IconButton(
-                    onPressed: () => context.go('/board/create'),
+                    onPressed: () => context.push('/board/create'),
                     icon: const Icon(Icons.add),
                   ),
                 ],
@@ -150,6 +150,10 @@ class _MainScreenState extends ConsumerState<MainScreen> {
                         return Card(
                           margin: const EdgeInsets.only(bottom: 8),
                           child: ListTile(
+                            tileColor: Colors.white,
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(16),
+                            ),
                             title: Text(
                               board.title,
                               style: const TextStyle(
@@ -167,7 +171,7 @@ class _MainScreenState extends ConsumerState<MainScreen> {
                               Icons.arrow_forward_ios,
                               size: 16,
                             ),
-                            onTap: () => context.go('/board/${board.id}'),
+                            onTap: () => context.push('/board/${board.id}'),
                           ),
                         );
                       },
@@ -207,6 +211,18 @@ class _MainScreenState extends ConsumerState<MainScreen> {
                 ),
               ),
             ),
+          const SizedBox(height: 16),
+          Center(
+            child: TextButton.icon(
+              onPressed: () => context.push('/board/list'),
+              icon: const Icon(Icons.list_alt),
+              label: const Text('게시글 전체보기'),
+              style: TextButton.styleFrom(
+                foregroundColor: Colors.blue,
+                textStyle: const TextStyle(fontSize: 16),
+              ),
+            ),
+          ),
         ],
       ),
     );
@@ -216,22 +232,11 @@ class _MainScreenState extends ConsumerState<MainScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: const Color(0xFFF7F9FB),
-      drawer: const DrawerWidget(),
+      endDrawer: const DrawerWidget(),
       appBar: AppBar(
         backgroundColor: const Color(0xFFF7F9FB),
 
-        title: const Text('더드림솔루션'),
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.logout),
-            onPressed: () async {
-              await ref.read(authProvider.notifier).logout();
-              if (context.mounted) {
-                context.pushReplacement('/login');
-              }
-            },
-          ),
-        ],
+        title: const Text('지원자_정휘원'),
       ),
       body:
           _isLoading

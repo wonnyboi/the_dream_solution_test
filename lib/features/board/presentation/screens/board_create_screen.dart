@@ -7,7 +7,8 @@ import 'dart:io';
 import 'package:the_dream_solution/features/board/providers/board_provider.dart';
 
 class BoardCreateScreen extends ConsumerStatefulWidget {
-  const BoardCreateScreen({super.key});
+  final int? boardId;
+  const BoardCreateScreen({super.key, this.boardId});
 
   @override
   ConsumerState<ConsumerStatefulWidget> createState() =>
@@ -25,13 +26,42 @@ class _BoardCreateScreenState extends ConsumerState<BoardCreateScreen> {
   String? _contentError;
   String? _categoryError;
 
+  bool get _isEditMode => widget.boardId != null;
+
   @override
   void initState() {
     super.initState();
     // Load categories when screen initializes
     WidgetsBinding.instance.addPostFrameCallback((_) {
       ref.read(boardProvider.notifier).loadCategories();
+      if (_isEditMode) {
+        _loadBoardForEdit();
+      }
     });
+  }
+
+  Future<void> _loadBoardForEdit() async {
+    try {
+      await ref.read(boardProvider.notifier).loadBoardDetail(widget.boardId!);
+      final board = ref.read(boardProvider).selectedBoard;
+      if (board != null) {
+        setState(() {
+          _titleController.text = board.title;
+          _contentController.text = board.content;
+          _selectedCategory = board.boardCategory;
+        });
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('게시글을 불러오는 중 오류가 발생했습니다: $e'),
+            backgroundColor: Colors.red,
+          ),
+        );
+        context.pop();
+      }
+    }
   }
 
   @override
@@ -133,25 +163,47 @@ class _BoardCreateScreenState extends ConsumerState<BoardCreateScreen> {
     );
 
     try {
-      final createdBoardId = await ref
-          .read(boardProvider.notifier)
-          .createBoard(request: boardRequest, imagePath: _selectedImage?.path);
+      if (_isEditMode) {
+        await ref
+            .read(boardProvider.notifier)
+            .updateBoard(
+              id: widget.boardId!,
+              request: boardRequest,
+              imagePath: _selectedImage?.path,
+            );
 
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('게시글이 성공적으로 작성되었습니다!'),
-            backgroundColor: Colors.green,
-          ),
-        );
-        // Navigate to the created board's detail page
-        context.go('/board/$createdBoardId');
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('게시글이 성공적으로 수정되었습니다!'),
+              backgroundColor: Colors.green,
+            ),
+          );
+          context.pop();
+        }
+      } else {
+        final createdBoardId = await ref
+            .read(boardProvider.notifier)
+            .createBoard(
+              request: boardRequest,
+              imagePath: _selectedImage?.path,
+            );
+
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('게시글이 성공적으로 작성되었습니다!'),
+              backgroundColor: Colors.green,
+            ),
+          );
+          context.push('/board/$createdBoardId');
+        }
       }
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('게시글 작성 중 오류가 발생했습니다: $e'),
+            content: Text('게시글 ${_isEditMode ? '수정' : '작성'} 중 오류가 발생했습니다: $e'),
             backgroundColor: Colors.red,
           ),
         );
@@ -227,6 +279,7 @@ class _BoardCreateScreenState extends ConsumerState<BoardCreateScreen> {
         const Text('카테고리', style: TextStyle(fontWeight: FontWeight.w500)),
         const SizedBox(height: 8),
         DropdownButtonFormField<String>(
+          dropdownColor: Colors.white,
           value: _selectedCategory.isEmpty ? null : _selectedCategory,
           onChanged: (String? value) {
             setState(() {
@@ -348,9 +401,12 @@ class _BoardCreateScreenState extends ConsumerState<BoardCreateScreen> {
           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
         ),
         child:
-            boardState.isCreating
+            boardState.isCreating || boardState.isUpdating
                 ? const CircularProgressIndicator(color: Colors.white)
-                : const Text('게시글 작성', style: TextStyle(fontSize: 16)),
+                : Text(
+                  _isEditMode ? '게시글 수정' : '게시글 작성',
+                  style: const TextStyle(fontSize: 16),
+                ),
       ),
     );
   }
@@ -362,11 +418,11 @@ class _BoardCreateScreenState extends ConsumerState<BoardCreateScreen> {
     return Scaffold(
       backgroundColor: const Color(0xFFF7F9FB),
       appBar: AppBar(
-        title: const Text('게시글 작성'),
+        title: Text(_isEditMode ? '게시글 수정' : '게시글 작성'),
         backgroundColor: const Color(0xFFF7F9FB),
         leading: IconButton(
           icon: const Icon(Icons.arrow_back),
-          onPressed: () => context.go('/main'),
+          onPressed: () => context.pop(),
         ),
       ),
       body: SingleChildScrollView(
@@ -389,14 +445,17 @@ class _BoardCreateScreenState extends ConsumerState<BoardCreateScreen> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                const Text(
-                  '새 게시글 작성',
-                  style: TextStyle(fontSize: 28, fontWeight: FontWeight.bold),
+                Text(
+                  _isEditMode ? '게시글 수정' : '새 게시글 작성',
+                  style: const TextStyle(
+                    fontSize: 28,
+                    fontWeight: FontWeight.bold,
+                  ),
                 ),
                 const SizedBox(height: 8),
-                const Text(
-                  '게시글 정보를 입력해주세요',
-                  style: TextStyle(fontSize: 16, color: Colors.grey),
+                Text(
+                  _isEditMode ? '게시글 정보를 수정해주세요' : '게시글 정보를 입력해주세요',
+                  style: const TextStyle(fontSize: 16, color: Colors.grey),
                 ),
                 const SizedBox(height: 32),
 

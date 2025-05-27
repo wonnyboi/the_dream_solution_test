@@ -49,12 +49,13 @@ class _DrawerWidgetState extends ConsumerState<DrawerWidget> {
       barrierDismissible: false,
       builder: (BuildContext context) {
         return AlertDialog(
-          title: const Text('Confirm Logout'),
-          content: const Text('Are you sure you want to logout?'),
+          backgroundColor: Colors.white,
+          title: const Text('로그아웃'),
+          content: const Text('로그아웃 하시겠습니까?'),
           actions: [
             TextButton(
               onPressed: () => Navigator.of(context).pop(false),
-              child: const Text('Cancel'),
+              child: const Text('취소'),
             ),
             ElevatedButton(
               onPressed: () => Navigator.of(context).pop(true),
@@ -62,7 +63,7 @@ class _DrawerWidgetState extends ConsumerState<DrawerWidget> {
                 backgroundColor: Colors.red,
                 foregroundColor: Colors.white,
               ),
-              child: const Text('Logout'),
+              child: const Text('로그아웃'),
             ),
           ],
         );
@@ -75,7 +76,6 @@ class _DrawerWidgetState extends ConsumerState<DrawerWidget> {
     return Drawer(
       child: Column(
         children: [
-          // Top third - User Information Section
           Expanded(
             flex: 1,
             child: Container(
@@ -131,19 +131,11 @@ class _DrawerWidgetState extends ConsumerState<DrawerWidget> {
             child: Column(
               children: [
                 ListTile(
-                  leading: const Icon(Icons.description),
-                  title: const Text('README'),
-                  onTap: () {
-                    Navigator.pop(context);
-                    context.go('/main');
-                  },
-                ),
-                ListTile(
                   leading: const Icon(Icons.dashboard),
                   title: const Text('Boards'),
                   onTap: () {
                     Navigator.pop(context);
-                    context.go('/board/create');
+                    context.push('/board/list');
                   },
                 ),
                 const Divider(),

@@ -60,19 +60,20 @@ class _BoardDetailScreenState extends ConsumerState<BoardDetailScreen> {
     );
 
     return Scaffold(
+      backgroundColor: const Color(0xFFF1F5F9),
       appBar: AppBar(
+        backgroundColor: const Color(0xFFF1F5F9),
         title: const Text('게시글 상세'),
         leading: IconButton(
           icon: const Icon(Icons.arrow_back),
-          onPressed: () => context.go('/main'),
+          onPressed: () => context.pop(),
         ),
         actions: [
           if (boardState.selectedBoard != null) ...[
             IconButton(
               icon: const Icon(Icons.edit),
               onPressed: () {
-                // Navigate to edit screen with board data
-                // You can implement this later
+                context.push('/board/${widget.boardId}/edit');
               },
             ),
             IconButton(
@@ -82,7 +83,17 @@ class _BoardDetailScreenState extends ConsumerState<BoardDetailScreen> {
           ],
         ],
       ),
-      body: _buildBody(boardState, boardNotifier),
+      body: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 16),
+        child: Container(
+          padding: const EdgeInsets.all(8.0),
+          decoration: const BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.all(Radius.circular(20)),
+          ),
+          child: _buildBody(boardState, boardNotifier),
+        ),
+      ),
     );
   }
 
@@ -138,7 +149,6 @@ class _BoardDetailScreenState extends ConsumerState<BoardDetailScreen> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // Title
           Text(
             board.title,
             style: Theme.of(
@@ -147,7 +157,6 @@ class _BoardDetailScreenState extends ConsumerState<BoardDetailScreen> {
           ),
           const SizedBox(height: 8),
 
-          // Category and Date
           Row(
             children: [
               Container(
@@ -174,7 +183,7 @@ class _BoardDetailScreenState extends ConsumerState<BoardDetailScreen> {
               ),
             ],
           ),
-          const SizedBox(height: 24),
+          const SizedBox(height: 12),
 
           // Image if available
           if (board.imageUrl != null && board.imageUrl!.isNotEmpty) ...[
@@ -202,23 +211,13 @@ class _BoardDetailScreenState extends ConsumerState<BoardDetailScreen> {
                 },
               ),
             ),
-            const SizedBox(height: 24),
           ],
+          const SizedBox(height: 12),
+          const Divider(color: Colors.grey),
+          const SizedBox(height: 12),
 
           // Content
-          Container(
-            width: double.infinity,
-            padding: const EdgeInsets.all(16),
-            decoration: BoxDecoration(
-              color: Colors.grey.shade50,
-              borderRadius: BorderRadius.circular(8),
-              border: Border.all(color: Colors.grey.shade200),
-            ),
-            child: Text(
-              board.content,
-              style: Theme.of(context).textTheme.bodyLarge,
-            ),
-          ),
+          Text(board.content, style: Theme.of(context).textTheme.bodyLarge),
         ],
       ),
     );
@@ -237,8 +236,9 @@ class _BoardDetailScreenState extends ConsumerState<BoardDetailScreen> {
       barrierDismissible: false,
       builder: (BuildContext context) {
         return AlertDialog(
+          backgroundColor: Colors.white,
           title: const Text('게시글 삭제'),
-          content: const Text('정말로 이 게시글을 삭제하시겠습니까?\n삭제된 게시글은 복구할 수 없습니다.'),
+          content: const Text('게시글을 삭제하시겠습니까?\n삭제된 게시글은 복구할 수 없습니다.'),
           actions: [
             TextButton(
               onPressed: () => Navigator.of(context).pop(false),
